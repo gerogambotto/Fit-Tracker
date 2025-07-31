@@ -1,0 +1,8 @@
+/prompt inicial.txt
+/venv
+/fittracker/backend/.env
+/fittracker/frontend/.env
+node_modules
+/node_modules
+.env
+prompt inicial.txt
