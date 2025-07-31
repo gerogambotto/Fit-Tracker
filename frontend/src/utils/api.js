@@ -43,6 +43,7 @@ export const rutinasAPI = {
   addEjercicio: (id, data) => api.post(`/rutinas/${id}/ejercicios`, data),
   downloadPDF: (id) => api.get(`/rutinas/${id}/pdf`, { responseType: 'blob' }),
   downloadExcel: (id) => api.get(`/rutinas/${id}/excel`, { responseType: 'blob' }),
+  copy: (rutinaId, targetAlumnoId) => api.post(`/rutinas/${rutinaId}/copy/${targetAlumnoId}`),
 };
 
 // Ejercicios endpoints

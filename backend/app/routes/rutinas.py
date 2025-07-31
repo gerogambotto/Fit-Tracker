@@ -46,14 +46,18 @@ class PesoUpdate(BaseModel):
 
 @router.get("/alumnos/{alumno_id}/rutinas")
 def get_rutinas(alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
     alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
     if not alumno:
         raise HTTPException(status_code=404, detail="Alumno not found")
     
-    rutinas = db.query(Rutina).filter(
+    rutinas = db.query(Rutina).options(
+        joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base)
+    ).filter(
         Rutina.alumno_id == alumno_id,
         Rutina.eliminado == False
-    ).all()
+    ).order_by(Rutina.activa.desc(), Rutina.id.desc()).all()
     return rutinas
 
 @router.post("/alumnos/{alumno_id}/rutinas")
@@ -88,7 +92,12 @@ def create_rutina(alumno_id: int, rutina_data: RutinaCreate, coach: Coach = Depe
 
 @router.get("/rutinas/{rutina_id}")
 def get_rutina(rutina_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    rutina = db.query(Rutina).join(Alumno).filter(
+    from sqlalchemy.orm import joinedload
+    
+    rutina = db.query(Rutina).options(
+        joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base),
+        joinedload(Rutina.alumno)
+    ).join(Alumno).filter(
         Rutina.id == rutina_id,
         Alumno.coach_id == coach.id,
         Rutina.eliminado == False
@@ -260,3 +269,67 @@ def download_rutina_excel(rutina_id: int, coach: Coach = Depends(get_current_coa
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename=rutina_{rutina.nombre}.xlsx"}
     )
+
+@router.post("/rutinas/{rutina_id}/copy/{target_alumno_id}")
+def copy_rutina(rutina_id: int, target_alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
+    # Verificar rutina original
+    rutina_original = db.query(Rutina).options(
+        joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base)
+    ).join(Alumno).filter(
+        Rutina.id == rutina_id,
+        Alumno.coach_id == coach.id,
+        Rutina.eliminado == False
+    ).first()
+    
+    if not rutina_original:
+        raise HTTPException(status_code=404, detail="Rutina not found")
+    
+    # Verificar alumno destino
+    target_alumno = db.query(Alumno).filter(
+        Alumno.id == target_alumno_id,
+        Alumno.coach_id == coach.id
+    ).first()
+    
+    if not target_alumno:
+        raise HTTPException(status_code=404, detail="Target alumno not found")
+    
+    # Marcar rutina anterior como eliminada si existe
+    rutina_anterior = db.query(Rutina).filter(
+        Rutina.alumno_id == target_alumno_id,
+        Rutina.activa == True,
+        Rutina.eliminado == False
+    ).first()
+    if rutina_anterior:
+        rutina_anterior.eliminado = True
+        rutina_anterior.activa = False
+    
+    # Crear nueva rutina
+    nueva_rutina = Rutina(
+        alumno_id=target_alumno_id,
+        nombre=f"{rutina_original.nombre}",
+        fecha_inicio=rutina_original.fecha_inicio,
+        notas=rutina_original.notas,
+        entrenamientos_semana=rutina_original.entrenamientos_semana
+    )
+    
+    db.add(nueva_rutina)
+    db.commit()
+    db.refresh(nueva_rutina)
+    
+    # Copiar ejercicios
+    for ejercicio_original in rutina_original.ejercicios:
+        nuevo_ejercicio = Ejercicio(
+            rutina_id=nueva_rutina.id,
+            ejercicio_base_id=ejercicio_original.ejercicio_base_id,
+            series=ejercicio_original.series,
+            repeticiones=ejercicio_original.repeticiones,
+            peso=ejercicio_original.peso,
+            descanso=ejercicio_original.descanso,
+            notas=ejercicio_original.notas
+        )
+        db.add(nuevo_ejercicio)
+    
+    db.commit()
+    return nueva_rutina

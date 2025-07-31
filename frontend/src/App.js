@@ -8,6 +8,7 @@ import Alumnos from './pages/Alumnos';
 import AlumnoDetail from './pages/AlumnoDetail';
 import CreateRutina from './pages/CreateRutina';
 import EditRutina from './pages/EditRutina';
+import ViewRutina from './pages/ViewRutina';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -68,6 +69,11 @@ function App() {
             <Route path="/rutinas/:rutinaId/edit" element={
               <ProtectedRoute>
                 <EditRutina />
+              </ProtectedRoute>
+            } />
+            <Route path="/rutinas/:rutinaId/view" element={
+              <ProtectedRoute>
+                <ViewRutina />
               </ProtectedRoute>
             } />
             <Route path="/" element={<Navigate to="/dashboard" />} />
