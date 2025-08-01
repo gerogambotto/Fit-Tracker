@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 from app.database import get_db
-from app.models.models import Coach, Alumno, PesoAlumno
+from app.models.models import Coach, Alumno, PesoAlumno, PersonalRecord, Dieta
 from app.middleware.auth import get_current_coach
 
 router = APIRouter(prefix="/alumnos", tags=["alumnos"])
@@ -28,6 +28,12 @@ class AlumnoUpdate(BaseModel):
 
 class PesoCreate(BaseModel):
     peso: float
+    fecha: Optional[datetime] = None
+
+class PersonalRecordCreate(BaseModel):
+    ejercicio: str
+    peso: float
+    repeticiones: int = 1
     fecha: Optional[datetime] = None
 
 @router.get("/")
@@ -110,6 +116,43 @@ def add_peso(alumno_id: int, peso_data: PesoCreate, coach: Coach = Depends(get_c
     
     return new_peso
 
+@router.post("/{alumno_id}/personal-records")
+def add_personal_record(alumno_id: int, pr_data: PersonalRecordCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
+    if not alumno:
+        raise HTTPException(status_code=404, detail="Alumno not found")
+    
+    if pr_data.ejercicio not in ["sentadilla", "press_militar", "press_plano", "peso_muerto"]:
+        raise HTTPException(status_code=400, detail="Ejercicio no válido")
+    
+    new_pr = PersonalRecord(
+        alumno_id=alumno_id,
+        ejercicio=pr_data.ejercicio,
+        peso=pr_data.peso,
+        repeticiones=pr_data.repeticiones,
+        fecha=pr_data.fecha or datetime.utcnow()
+    )
+    
+    db.add(new_pr)
+    db.commit()
+    db.refresh(new_pr)
+    
+    return new_pr
+
+@router.delete("/personal-records/{pr_id}")
+def delete_personal_record(pr_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    pr = db.query(PersonalRecord).join(Alumno).filter(
+        PersonalRecord.id == pr_id,
+        Alumno.coach_id == coach.id
+    ).first()
+    
+    if not pr:
+        raise HTTPException(status_code=404, detail="Personal Record not found")
+    
+    db.delete(pr)
+    db.commit()
+    return {"message": "Personal Record deleted successfully"}
+
 @router.get("/{alumno_id}/dashboard")
 def get_alumno_dashboard(alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
@@ -126,6 +169,9 @@ def get_alumno_dashboard(alumno_id: int, coach: Coach = Depends(get_current_coac
         birth_date = alumno.fecha_nacimiento.date()
         edad = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
     
+    # Obtener personal records
+    prs = db.query(PersonalRecord).filter(PersonalRecord.alumno_id == alumno_id).order_by(PersonalRecord.fecha.desc()).all()
+    
     return {
         "alumno": {
             "id": alumno.id,
@@ -138,5 +184,7 @@ def get_alumno_dashboard(alumno_id: int, coach: Coach = Depends(get_current_coac
             "fecha_cobro": alumno.fecha_cobro
         },
         "historico_pesos": [{"fecha": p.fecha, "peso": p.peso} for p in pesos],
-        "rutinas": [r for r in alumno.rutinas if not r.eliminado]
+        "personal_records": [{"id": pr.id, "ejercicio": pr.ejercicio, "peso": pr.peso, "repeticiones": pr.repeticiones, "fecha": pr.fecha} for pr in prs],
+        "rutinas": [r for r in alumno.rutinas if not r.eliminado],
+        "dietas": [d for d in alumno.dietas if not d.eliminado]
     }

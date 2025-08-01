@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine
 from app.models.models import Base
-from app.routes import auth, alumnos, rutinas, dashboard, ejercicios_base
+from app.routes import auth, alumnos, rutinas, dashboard, ejercicios_base, dietas
 
 # Crear tablas
 Base.metadata.create_all(bind=engine)
@@ -33,6 +33,7 @@ app.include_router(alumnos.router)
 app.include_router(rutinas.router)
 app.include_router(dashboard.router)
 app.include_router(ejercicios_base.router)
+app.include_router(dietas.router)
 
 @app.get("/")
 def read_root():

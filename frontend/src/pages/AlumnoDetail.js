@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { alumnosAPI, rutinasAPI } from '../utils/api';
+import { alumnosAPI, rutinasAPI, dietasAPI } from '../utils/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Layout from '../components/Layout';
 
@@ -17,6 +17,8 @@ const AlumnoDetail = () => {
   const [selectedRutina, setSelectedRutina] = useState(null);
   const [alumnos, setAlumnos] = useState([]);
   const [targetAlumno, setTargetAlumno] = useState('');
+  const [showPRForm, setShowPRForm] = useState(false);
+  const [prForm, setPrForm] = useState({ ejercicio: '', peso: '', repeticiones: 1 });
 
   useEffect(() => {
     fetchData();
@@ -125,6 +127,51 @@ const AlumnoDetail = () => {
     }
   };
 
+  const saveAsTemplate = async (rutinaId) => {
+    try {
+      await rutinasAPI.saveAsTemplate(rutinaId);
+      alert('Rutina guardada como plantilla');
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert('Error al guardar plantilla');
+    }
+  };
+
+  const handleAddPR = async (e) => {
+    e.preventDefault();
+    try {
+      await alumnosAPI.addPersonalRecord(id, {
+        ejercicio: prForm.ejercicio,
+        peso: parseFloat(prForm.peso),
+        repeticiones: parseInt(prForm.repeticiones)
+      });
+      setPrForm({ ejercicio: '', peso: '', repeticiones: 1 });
+      setShowPRForm(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error adding PR:', error);
+    }
+  };
+
+  const deletePR = async (prId) => {
+    try {
+      await alumnosAPI.deletePersonalRecord(prId);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting PR:', error);
+    }
+  };
+
+  const saveDietaAsTemplate = async (dietaId) => {
+    try {
+      await dietasAPI.saveAsTemplate(dietaId);
+      alert('Dieta guardada como plantilla');
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert('Error al guardar plantilla');
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -216,7 +263,7 @@ const AlumnoDetail = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Progreso de Peso</h2>
@@ -267,7 +314,7 @@ const AlumnoDetail = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Rutinas</h2>
               <Link
-                to={`/alumnos/${id}/create-rutina`}
+                to={`/alumnos/${id}/select-rutina-type`}
                 className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
               >
                 Nueva Rutina
@@ -338,6 +385,15 @@ const AlumnoDetail = () => {
                     >
                       Excel
                     </button>
+                    <button
+                      onClick={() => saveAsTemplate(rutina.id)}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs inline-flex items-center"
+                    >
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                      Plantilla
+                    </button>
                   </div>
                 </div>
               ))}
@@ -348,6 +404,162 @@ const AlumnoDetail = () => {
             )}
           </div>
         </div>
+
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Personal Records</h2>
+            <button
+              onClick={() => setShowPRForm(!showPRForm)}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm"
+            >
+              Agregar PR
+            </button>
+          </div>
+
+          {showPRForm && (
+            <form onSubmit={handleAddPR} className="mb-4 p-4 bg-orange-50 rounded space-y-3">
+              <select
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                value={prForm.ejercicio}
+                onChange={(e) => setPrForm({ ...prForm, ejercicio: e.target.value })}
+                required
+              >
+                <option value="">Seleccionar ejercicio...</option>
+                <option value="sentadilla">Sentadilla</option>
+                <option value="press_militar">Press Militar</option>
+                <option value="press_plano">Press Plano</option>
+                <option value="peso_muerto">Peso Muerto</option>
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  step="0.5"
+                  placeholder="Peso (kg)"
+                  className="border border-gray-300 rounded px-3 py-2"
+                  value={prForm.peso}
+                  onChange={(e) => setPrForm({ ...prForm, peso: e.target.value })}
+                  required
+                />
+                <input
+                  type="number"
+                  placeholder="Repeticiones"
+                  className="border border-gray-300 rounded px-3 py-2"
+                  value={prForm.repeticiones}
+                  onChange={(e) => setPrForm({ ...prForm, repeticiones: e.target.value })}
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded"
+              >
+                Agregar PR
+              </button>
+            </form>
+          )}
+
+          <div className="space-y-3">
+            {dashboardData?.personal_records?.length > 0 ? (
+              dashboardData.personal_records.map((pr) => (
+                <div key={pr.id} className="p-3 border border-gray-200 rounded flex justify-between items-center">
+                  <div>
+                    <h4 className="font-medium capitalize">
+                      {pr.ejercicio.replace('_', ' ')}
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      {pr.peso}kg × {pr.repeticiones} rep{pr.repeticiones > 1 ? 's' : ''}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(pr.fecha).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => deletePR(pr.id)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-8">No hay personal records registrados</p>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Dietas</h2>
+            <Link
+              to={`/alumnos/${id}/select-dieta-type`}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
+            >
+              Nueva Dieta
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {dashboardData?.dietas?.length > 0 ? (
+              dashboardData.dietas.map((dieta) => (
+                <div key={dieta.id} className={`p-4 border rounded ${
+                  dieta.activa ? 'border-purple-300 bg-purple-50' : 'border-gray-200'
+                }`}>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-semibold">{dieta.nombre}</h3>
+                        {dieta.activa && (
+                          <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                            Activa
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Fecha: {dieta.fecha_inicio ? new Date(dieta.fecha_inicio).toLocaleDateString() : 'No especificada'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Comidas: {dieta.comidas?.length || 0}
+                      </p>
+                      {dieta.notas && (
+                        <p className="text-sm text-gray-600 mt-1">{dieta.notas}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link
+                      to={`/dietas/${dieta.id}/view`}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded text-xs inline-flex items-center"
+                    >
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Ver
+                    </Link>
+                    <Link
+                      to={`/dietas/${dieta.id}/edit`}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+                    >
+                      Editar
+                    </Link>
+                    <button
+                      onClick={() => saveDietaAsTemplate(dieta.id)}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs inline-flex items-center"
+                    >
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                      Plantilla
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-8">No hay dietas asignadas</p>
+            )}
+          </div>
+        </div>
+       
 
         {/* Modal para copiar rutina */}
         {showCopyModal && (

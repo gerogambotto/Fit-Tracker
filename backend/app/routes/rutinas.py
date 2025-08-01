@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 from app.database import get_db
-from app.models.models import Coach, Alumno, Rutina, Ejercicio, PesoAlumno
+from app.models.models import Coach, Alumno, Rutina, Ejercicio, PesoAlumno, RutinaPlantilla, EjercicioPlantilla
 from app.middleware.auth import get_current_coach
 from app.utils.pdf_generator import generate_rutina_pdf
 from app.utils.excel_generator import generate_rutina_excel
@@ -328,6 +328,134 @@ def copy_rutina(rutina_id: int, target_alumno_id: int, coach: Coach = Depends(ge
             peso=ejercicio_original.peso,
             descanso=ejercicio_original.descanso,
             notas=ejercicio_original.notas
+        )
+        db.add(nuevo_ejercicio)
+    
+    db.commit()
+    return nueva_rutina
+
+@router.get("/plantillas")
+def get_plantillas(coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
+    plantillas = db.query(RutinaPlantilla).options(
+        joinedload(RutinaPlantilla.ejercicios).joinedload(EjercicioPlantilla.ejercicio_base)
+    ).filter(RutinaPlantilla.coach_id == coach.id).all()
+    return plantillas
+
+@router.post("/plantillas")
+def create_plantilla(plantilla_data: RutinaCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    nueva_plantilla = RutinaPlantilla(
+        coach_id=coach.id,
+        nombre=plantilla_data.nombre,
+        notas=plantilla_data.notas,
+        entrenamientos_semana=plantilla_data.entrenamientos_semana
+    )
+    
+    db.add(nueva_plantilla)
+    db.commit()
+    db.refresh(nueva_plantilla)
+    return nueva_plantilla
+
+@router.post("/rutinas/{rutina_id}/save-as-template")
+def save_as_template(rutina_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
+    rutina = db.query(Rutina).options(
+        joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base)
+    ).join(Alumno).filter(
+        Rutina.id == rutina_id,
+        Alumno.coach_id == coach.id,
+        Rutina.eliminado == False
+    ).first()
+    
+    if not rutina:
+        raise HTTPException(status_code=404, detail="Rutina not found")
+    
+    # Crear plantilla
+    plantilla = RutinaPlantilla(
+        coach_id=coach.id,
+        nombre=f"{rutina.nombre} (Plantilla)",
+        notas=rutina.notas,
+        entrenamientos_semana=rutina.entrenamientos_semana
+    )
+    
+    db.add(plantilla)
+    db.commit()
+    db.refresh(plantilla)
+    
+    # Copiar ejercicios
+    for ejercicio in rutina.ejercicios:
+        ejercicio_plantilla = EjercicioPlantilla(
+            rutina_plantilla_id=plantilla.id,
+            ejercicio_base_id=ejercicio.ejercicio_base_id,
+            series=ejercicio.series,
+            repeticiones=ejercicio.repeticiones,
+            peso=ejercicio.peso,
+            descanso=ejercicio.descanso,
+            notas=ejercicio.notas
+        )
+        db.add(ejercicio_plantilla)
+    
+    db.commit()
+    return plantilla
+
+@router.post("/plantillas/{plantilla_id}/create-rutina/{alumno_id}")
+def create_from_template(plantilla_id: int, alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
+    # Verificar plantilla
+    plantilla = db.query(RutinaPlantilla).options(
+        joinedload(RutinaPlantilla.ejercicios).joinedload(EjercicioPlantilla.ejercicio_base)
+    ).filter(
+        RutinaPlantilla.id == plantilla_id,
+        RutinaPlantilla.coach_id == coach.id
+    ).first()
+    
+    if not plantilla:
+        raise HTTPException(status_code=404, detail="Plantilla not found")
+    
+    # Verificar alumno
+    alumno = db.query(Alumno).filter(
+        Alumno.id == alumno_id,
+        Alumno.coach_id == coach.id
+    ).first()
+    
+    if not alumno:
+        raise HTTPException(status_code=404, detail="Alumno not found")
+    
+    # Marcar rutina anterior como eliminada
+    rutina_anterior = db.query(Rutina).filter(
+        Rutina.alumno_id == alumno_id,
+        Rutina.activa == True,
+        Rutina.eliminado == False
+    ).first()
+    if rutina_anterior:
+        rutina_anterior.eliminado = True
+        rutina_anterior.activa = False
+    
+    # Crear rutina desde plantilla
+    nueva_rutina = Rutina(
+        alumno_id=alumno_id,
+        nombre=plantilla.nombre.replace(" (Plantilla)", ""),
+        notas=plantilla.notas,
+        entrenamientos_semana=plantilla.entrenamientos_semana
+    )
+    
+    db.add(nueva_rutina)
+    db.commit()
+    db.refresh(nueva_rutina)
+    
+    # Copiar ejercicios
+    for ejercicio_plantilla in plantilla.ejercicios:
+        nuevo_ejercicio = Ejercicio(
+            rutina_id=nueva_rutina.id,
+            ejercicio_base_id=ejercicio_plantilla.ejercicio_base_id,
+            series=ejercicio_plantilla.series,
+            repeticiones=ejercicio_plantilla.repeticiones,
+            peso=ejercicio_plantilla.peso,
+            descanso=ejercicio_plantilla.descanso,
+            notas=ejercicio_plantilla.notas
         )
         db.add(nuevo_ejercicio)
     

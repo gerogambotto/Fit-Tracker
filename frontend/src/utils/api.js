@@ -31,6 +31,8 @@ export const alumnosAPI = {
   getPesos: (id) => api.get(`/alumnos/${id}/pesos`),
   addPeso: (id, data) => api.post(`/alumnos/${id}/pesos`, data),
   getDashboard: (id) => api.get(`/alumnos/${id}/dashboard`),
+  addPersonalRecord: (id, data) => api.post(`/alumnos/${id}/personal-records`, data),
+  deletePersonalRecord: (prId) => api.delete(`/alumnos/personal-records/${prId}`),
 };
 
 // Rutinas endpoints
@@ -44,6 +46,9 @@ export const rutinasAPI = {
   downloadPDF: (id) => api.get(`/rutinas/${id}/pdf`, { responseType: 'blob' }),
   downloadExcel: (id) => api.get(`/rutinas/${id}/excel`, { responseType: 'blob' }),
   copy: (rutinaId, targetAlumnoId) => api.post(`/rutinas/${rutinaId}/copy/${targetAlumnoId}`),
+  saveAsTemplate: (rutinaId) => api.post(`/rutinas/${rutinaId}/save-as-template`),
+  getPlantillas: () => api.get('/plantillas'),
+  createFromTemplate: (plantillaId, alumnoId) => api.post(`/plantillas/${plantillaId}/create-rutina/${alumnoId}`),
 };
 
 // Ejercicios endpoints
@@ -62,6 +67,28 @@ export const ejerciciosBaseAPI = {
   getAll: () => api.get('/ejercicios-base'),
   search: (query) => api.get(`/ejercicios-base/search/${query}`),
   create: (data) => api.post('/ejercicios-base', data),
+};
+
+// Dietas endpoints
+export const dietasAPI = {
+  getByAlumno: (alumnoId) => api.get(`/alumnos/${alumnoId}/dietas`),
+  create: (alumnoId, data) => api.post(`/alumnos/${alumnoId}/dietas`, data),
+  getById: (id) => api.get(`/dietas/${id}`),
+  addComida: (id, data) => api.post(`/dietas/${id}/comidas`, data),
+  addAlimentoToComida: (comidaId, data) => api.post(`/comidas/${comidaId}/alimentos`, data),
+  deleteComidaAlimento: (id) => api.delete(`/comida-alimentos/${id}`),
+  updateComida: (comidaId, data) => api.patch(`/comidas/${comidaId}`, data),
+  deleteComida: (comidaId) => api.delete(`/comidas/${comidaId}`),
+  saveAsTemplate: (dietaId) => api.post(`/dietas/${dietaId}/save-as-template`),
+  getPlantillas: () => api.get('/dietas-plantillas'),
+  createFromTemplate: (plantillaId, alumnoId) => api.post(`/dietas-plantillas/${plantillaId}/create-dieta/${alumnoId}`),
+};
+
+// Alimentos endpoints
+export const alimentosAPI = {
+  getAll: () => api.get('/alimentos'),
+  search: (query) => api.get(`/alimentos/search/${query}`),
+  create: (data) => api.post('/alimentos', data),
 };
 
 export default api;

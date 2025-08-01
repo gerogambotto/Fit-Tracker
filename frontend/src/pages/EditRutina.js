@@ -141,12 +141,24 @@ const EditRutina = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Editar Rutina: {rutina.nombre}</h1>
-          <button
-            onClick={() => navigate(-1)}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
-          >
-            Volver
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => {
+                if (window.confirm('¿Estás seguro de eliminar esta rutina?')) {
+                  rutinasAPI.delete(rutinaId).then(() => navigate(-1));
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+            >
+              Eliminar Rutina
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+            >
+              Volver
+            </button>
+          </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
@@ -285,13 +297,25 @@ const EditRutina = () => {
                               <p className="text-sm text-gray-500">{ejercicio.notas.replace(`Día ${dia}: `, '')}</p>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => removeEjercicio(dia, ejercicio.id, index)}
-                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                          >
-                            Eliminar
-                          </button>
+                          <div className="flex space-x-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Aquí podrías agregar lógica de edición inline
+                                console.log('Edit ejercicio', ejercicio.id);
+                              }}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeEjercicio(dia, ejercicio.id, index)}
+                              className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
