@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { authAPI } from '../utils/api';
 import { useNavigate, Link } from 'react-router-dom';
+import { getErrorFromResponse } from '../utils/errorHandler';
 
 const Register = () => {
   const [formData, setFormData] = useState({ nombre: '', email: '', password: '' });
@@ -17,7 +18,7 @@ const Register = () => {
       await authAPI.register(formData);
       navigate('/login', { state: { message: 'Registro exitoso. Inicia sesión.' } });
     } catch (error) {
-      setError(error.response?.data?.detail || 'Error al registrarse');
+      setError(getErrorFromResponse(error));
     } finally {
       setLoading(false);
     }

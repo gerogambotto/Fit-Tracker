@@ -2,6 +2,18 @@
 
 Una aplicación web Full Stack para que coaches gestionen a sus alumnos, asignen rutinas personalizadas, registren pesos de progreso y generen reportes en PDF/Excel.
 
+## ✨ Características
+
+- 📊 **Dashboard completo** con estadísticas y métricas
+- 👥 **Gestión de alumnos** con perfiles detallados
+- 💪 **Rutinas personalizadas** con ejercicios y plantillas
+- 🍽️ **Planes de dieta** con seguimiento nutricional
+- 📈 **Seguimiento de progreso** con gráficos y estadísticas
+- 📧 **Recordatorios automáticos** de pago por email
+- 📊 **Exportación** de rutinas en PDF y Excel
+- 🔒 **Autenticación segura** con JWT
+- 📱 **Diseño responsive** para móviles y desktop
+
 ## Tecnologías
 
 ### Backend
@@ -13,6 +25,7 @@ Una aplicación web Full Stack para que coaches gestionen a sus alumnos, asignen
 - **pdfkit** - Generación de PDF
 - **openpyxl** - Generación de Excel
 - **pytest** - Testing
+- **Resend** - Servicio de email
 
 ### Frontend
 - **React** - Biblioteca de interfaz de usuario
@@ -22,54 +35,88 @@ Una aplicación web Full Stack para que coaches gestionen a sus alumnos, asignen
 - **Recharts** - Gráficos
 - **JWT-decode** - Decodificación de tokens
 
-## Instalación
+## 🚀 Instalación
+
+### Prerrequisitos
+
+- Python 3.8+
+- Node.js 16+
+- MySQL 8.0+
+- Git
 
 ### Backend
 
-1. Navegar al directorio del backend:
+1. **Clonar el repositorio:**
 ```bash
-cd backend
+git clone <repository-url>
+cd Fit-Tracker/backend
 ```
 
-2. Crear entorno virtual:
+2. **Crear entorno virtual:**
 ```bash
 python -m venv venv
-venv\Scripts\activate  # Windows
+
+# Windows
+venv\Scripts\activate
+
+# Linux/Mac
+source venv/bin/activate
 ```
 
-3. Instalar dependencias:
+3. **Instalar dependencias:**
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Configurar base de datos MySQL y actualizar `.env`
+4. **Configurar base de datos:**
+   - Crear base de datos MySQL llamada `fittracker`
+   - Actualizar el archivo `.env` con tus credenciales:
 
-5. Ejecutar migraciones:
+```env
+DATABASE_URL=mysql+mysqlconnector://usuario:password@localhost:3306/fittracker
+SECRET_KEY=tu-clave-secreta-super-segura-de-al-menos-32-caracteres
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_HOURS=24
+RESEND_API_KEY=tu-api-key-de-resend
+FROM_EMAIL=noreply@tudominio.com
+```
+
+5. **Ejecutar migraciones:**
 ```bash
 alembic upgrade head
 ```
 
-6. Ejecutar servidor:
+6. **Poblar datos iniciales (opcional):**
+```bash
+python seed_ejercicios.py
+python seed_alimentos.py
+```
+
+7. **Ejecutar servidor:**
 ```bash
 python -m app.main
 ```
 
+El backend estará disponible en `http://localhost:8000`
+
 ### Frontend
 
-1. Navegar al directorio del frontend:
+1. **Navegar al directorio del frontend:**
 ```bash
-cd frontend
+cd ../frontend
 ```
 
-2. Instalar dependencias:
+2. **Instalar dependencias:**
 ```bash
 npm install
 ```
 
-3. Ejecutar aplicación:
+3. **Ejecutar aplicación:**
 ```bash
 npm start
 ```
+
+La aplicación estará disponible en `http://localhost:3000`
 
 ## Funcionalidades
 
@@ -124,13 +171,75 @@ npm start
 ### Dashboard
 - `GET /dashboard` - Dashboard del coach
 
-## Testing
+## 🧪 Testing
 
-Ejecutar tests del backend:
+### Backend Tests
 ```bash
 cd backend
-pytest
+pytest -v
 ```
+
+### Frontend Tests
+```bash
+cd frontend
+npm test
+```
+
+## 📝 Configuración de Producción
+
+### Variables de Entorno
+
+Asegúrate de configurar las siguientes variables de entorno en producción:
+
+```env
+# Base de datos
+DATABASE_URL=mysql+mysqlconnector://user:password@host:port/database
+
+# Seguridad
+SECRET_KEY=clave-super-segura-de-al-menos-32-caracteres-para-produccion
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_HOURS=24
+
+# Email
+RESEND_API_KEY=tu-api-key-de-resend-para-produccion
+FROM_EMAIL=noreply@tudominio.com
+```
+
+### Recordatorios de Pago
+
+Para configurar recordatorios automáticos de pago, agrega un cron job:
+
+```bash
+# Ejecutar todos los días a las 9:00 AM
+0 9 * * * cd /path/to/fittracker/backend && python run_payment_reminders.py
+```
+
+## 🔧 Mejoras Implementadas
+
+### Seguridad
+- ✅ Validación de entrada y sanitización
+- ✅ Protección contra XSS
+- ✅ Manejo seguro de tokens JWT
+- ✅ Actualización de dependencias vulnerables
+
+### Performance
+- ✅ Índices de base de datos optimizados
+- ✅ Transacciones batch para operaciones múltiples
+- ✅ Eager loading para consultas relacionadas
+- ✅ Manejo eficiente de errores
+
+### Experiencia de Usuario
+- ✅ Componentes de carga y error
+- ✅ Sistema de notificaciones
+- ✅ Validación en tiempo real
+- ✅ Mensajes de error mejorados
+- ✅ Diseño responsive
+
+### Mantenibilidad
+- ✅ Logging estructurado
+- ✅ Manejo de errores centralizado
+- ✅ Código reutilizable
+- ✅ Documentación mejorada
 
 ## Estructura del Proyecto
 

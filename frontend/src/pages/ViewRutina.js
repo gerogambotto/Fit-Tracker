@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { rutinasAPI } from '../utils/api';
 import Layout from '../components/Layout';
+import CopyDayModal from '../components/CopyDayModal';
 
 const ViewRutina = () => {
   const { rutinaId } = useParams();
   const navigate = useNavigate();
   const [rutina, setRutina] = useState(null);
   const [diasEntrenamiento, setDiasEntrenamiento] = useState({});
+  const [showCopyModal, setShowCopyModal] = useState(false);
 
   useEffect(() => {
     fetchRutina();
@@ -26,8 +28,7 @@ const ViewRutina = () => {
       }
       
       rutinaData.ejercicios.forEach(ejercicio => {
-        const diaMatch = ejercicio.notas?.match(/Día (\d+):/);
-        const dia = diaMatch ? parseInt(diaMatch[1]) : 1;
+        const dia = ejercicio.dia || 1;
         if (dias[dia]) {
           dias[dia].push({
             ...ejercicio,
@@ -57,12 +58,20 @@ const ViewRutina = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Rutina: {rutina.nombre}</h1>
-          <button
-            onClick={() => navigate(-1)}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
-          >
-            Volver
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setShowCopyModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            >
+              Copiar Día
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+            >
+              Volver
+            </button>
+          </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
@@ -134,6 +143,13 @@ const ViewRutina = () => {
             <p className="text-gray-500">Esta rutina no tiene ejercicios asignados</p>
           </div>
         )}
+        
+        <CopyDayModal
+          isOpen={showCopyModal}
+          onClose={() => setShowCopyModal(false)}
+          rutinaId={rutinaId}
+          onSuccess={fetchRutina}
+        />
       </div>
     </Layout>
   );

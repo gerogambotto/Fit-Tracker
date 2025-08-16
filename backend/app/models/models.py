@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import Base
 
 class Coach(Base):
@@ -10,7 +10,7 @@ class Coach(Base):
     nombre = Column(String(100))
     email = Column(String(100), unique=True)
     password_hash = Column(String(255))
-    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_en = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     alumnos = relationship("Alumno", back_populates="coach")
 
@@ -25,9 +25,9 @@ class Alumno(Base):
     altura = Column(Float)  # en metros
     objetivo = Column(String(255))
     fecha_cobro = Column(DateTime, nullable=True)
-    notificaciones_activas = Column(Boolean, default=True)
+    notificaciones_activas = Column(Boolean, default=False)
     ultima_notificacion = Column(DateTime, nullable=True)
-    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_en = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     coach = relationship("Coach", back_populates="alumnos")
     pesos = relationship("PesoAlumno", back_populates="alumno")
@@ -41,7 +41,7 @@ class PesoAlumno(Base):
     id = Column(Integer, primary_key=True)
     alumno_id = Column(Integer, ForeignKey("alumnos.id"))
     peso = Column(Float)
-    fecha = Column(DateTime, default=datetime.utcnow)
+    fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     alumno = relationship("Alumno", back_populates="pesos")
 
@@ -54,6 +54,7 @@ class Rutina(Base):
     fecha_inicio = Column(DateTime)
     notas = Column(Text)
     entrenamientos_semana = Column(Integer, default=3)
+    fecha_vencimiento = Column(DateTime, nullable=True)
     activa = Column(Boolean, default=True)
     eliminado = Column(Boolean, default=False)
     
@@ -66,7 +67,7 @@ class EjercicioBase(Base):
     id = Column(Integer, primary_key=True)
     nombre = Column(String(100), unique=True)
     categoria = Column(String(50))  # grupo muscular
-    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_en = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class Ejercicio(Base):
     __tablename__ = "ejercicios"
@@ -74,6 +75,7 @@ class Ejercicio(Base):
     id = Column(Integer, primary_key=True)
     rutina_id = Column(Integer, ForeignKey("rutinas.id"))
     ejercicio_base_id = Column(Integer, ForeignKey("ejercicios_base.id"))
+    dia = Column(Integer, default=1)  # día de la semana (1-7)
     series = Column(Integer)
     repeticiones = Column(Integer)
     peso = Column(Float, nullable=True)  # en kg
@@ -91,7 +93,7 @@ class RutinaPlantilla(Base):
     nombre = Column(String(100))
     notas = Column(Text)
     entrenamientos_semana = Column(Integer, default=3)
-    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_en = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     coach = relationship("Coach")
     ejercicios = relationship("EjercicioPlantilla", back_populates="rutina_plantilla")
@@ -119,7 +121,7 @@ class PersonalRecord(Base):
     ejercicio = Column(String(50))  # sentadilla, press_militar, press_plano, peso_muerto
     peso = Column(Float)
     repeticiones = Column(Integer, default=1)
-    fecha = Column(DateTime, default=datetime.utcnow)
+    fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     alumno = relationship("Alumno")
 
@@ -153,6 +155,7 @@ class Comida(Base):
     id = Column(Integer, primary_key=True)
     dieta_id = Column(Integer, ForeignKey("dietas.id"))
     nombre = Column(String(100))  # desayuno, almuerzo, cena, etc
+    dia = Column(Integer, default=1)  # día de la semana (1-7)
     orden = Column(Integer, default=1)
     
     dieta = relationship("Dieta", back_populates="comidas")
@@ -176,7 +179,7 @@ class DietaPlantilla(Base):
     coach_id = Column(Integer, ForeignKey("coaches.id"))
     nombre = Column(String(100))
     notas = Column(Text)
-    creado_en = Column(DateTime, default=datetime.utcnow)
+    creado_en = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     coach = relationship("Coach")
     comidas = relationship("ComidaPlantilla", back_populates="dieta_plantilla")

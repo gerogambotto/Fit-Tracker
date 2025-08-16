@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
-from app.models.models import Coach, Alumno, Rutina
+from app.models.models import Coach, Alumno, Rutina, Dieta
 from app.middleware.auth import get_current_coach
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -19,6 +19,12 @@ def get_dashboard(coach: Coach = Depends(get_current_coach), db: Session = Depen
         Rutina.eliminado == False
     ).count()
     
+    total_dietas = db.query(Dieta).join(Alumno).filter(
+        Alumno.coach_id == coach.id,
+        Dieta.activa == True,
+        Dieta.eliminado == False
+    ).count()
+    
     # Últimos alumnos añadidos (últimos 5)
     ultimos_alumnos = db.query(Alumno).filter(
         Alumno.coach_id == coach.id
@@ -27,6 +33,7 @@ def get_dashboard(coach: Coach = Depends(get_current_coach), db: Session = Depen
     return {
         "total_alumnos": total_alumnos,
         "total_rutinas": total_rutinas,
+        "total_dietas": total_dietas,
         "ultimos_alumnos": [
             {
                 "id": alumno.id,

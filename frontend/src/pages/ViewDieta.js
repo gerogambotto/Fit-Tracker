@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { dietasAPI } from '../utils/api';
 import Layout from '../components/Layout';
+import CopyDayDietModal from '../components/CopyDayDietModal';
 
 const ViewDieta = () => {
   const { dietaId } = useParams();
   const navigate = useNavigate();
   const [dieta, setDieta] = useState(null);
+  const [showCopyModal, setShowCopyModal] = useState(false);
 
   useEffect(() => {
     fetchDieta();
@@ -15,7 +17,23 @@ const ViewDieta = () => {
   const fetchDieta = async () => {
     try {
       const response = await dietasAPI.getById(dietaId);
-      setDieta(response.data);
+      const dietaData = response.data;
+      
+      // Organize meals by day
+      const diasComidas = {};
+      for (let i = 1; i <= 7; i++) {
+        diasComidas[i] = [];
+      }
+      
+      dietaData.comidas?.forEach(comida => {
+        const dia = comida.dia || 1;
+        if (diasComidas[dia]) {
+          diasComidas[dia].push(comida);
+        }
+      });
+      
+      dietaData.diasComidas = diasComidas;
+      setDieta(dietaData);
     } catch (error) {
       console.error('Error fetching dieta:', error);
     }
@@ -62,12 +80,20 @@ const ViewDieta = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Dieta: {dieta.nombre}</h1>
-          <button
-            onClick={() => navigate(-1)}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
-          >
-            Volver
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setShowCopyModal(true)}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"
+            >
+              Copiar Día
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+            >
+              Volver
+            </button>
+          </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
@@ -106,37 +132,56 @@ const ViewDieta = () => {
           )}
         </div>
 
-        {dieta.comidas?.length > 0 ? (
-          <div className="space-y-4">
-            {dieta.comidas.map((comida) => (
-              <div key={comida.id} className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-lg font-semibold mb-3">{comida.nombre}</h3>
-                <div className="space-y-2">
-                  {comida.alimentos?.map((ca) => (
-                    <div key={ca.id} className="p-3 bg-gray-50 rounded">
-                      <h4 className="font-medium">{ca.alimento.nombre}</h4>
-                      <p className="text-sm text-gray-600">
-                        {ca.cantidad_gramos}g - {Math.round(ca.alimento.calorias_100g * ca.cantidad_gramos / 100)} kcal
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        P: {Math.round(ca.alimento.proteinas_100g * ca.cantidad_gramos / 100)}g | 
-                        C: {Math.round(ca.alimento.carbohidratos_100g * ca.cantidad_gramos / 100)}g | 
-                        G: {Math.round(ca.alimento.grasas_100g * ca.cantidad_gramos / 100)}g
-                      </p>
+        {Object.keys(dieta.diasComidas || {}).some(dia => dieta.diasComidas[dia].length > 0) ? (
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">Dieta por Menús</h2>
+            <div className="space-y-6">
+              {Object.entries(dieta.diasComidas || {}).map(([dia, comidas]) => (
+                comidas.length > 0 && (
+                  <div key={dia} className="border border-gray-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-lg mb-3 text-purple-600">Menú {dia}</h3>
+                    <div className="space-y-4">
+                      {comidas.map((comida) => (
+                        <div key={comida.id} className="p-4 bg-purple-50 rounded-lg">
+                          <h4 className="font-semibold text-purple-800 mb-2">{comida.nombre}</h4>
+                          <div className="space-y-2">
+                            {comida.alimentos?.map((ca) => (
+                              <div key={ca.id} className="p-3 bg-white rounded">
+                                <h5 className="font-medium">{ca.alimento.nombre}</h5>
+                                <p className="text-sm text-gray-600">
+                                  {ca.cantidad_gramos}g - {Math.round(ca.alimento.calorias_100g * ca.cantidad_gramos / 100)} kcal
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  P: {Math.round(ca.alimento.proteinas_100g * ca.cantidad_gramos / 100)}g | 
+                                  C: {Math.round(ca.alimento.carbohidratos_100g * ca.cantidad_gramos / 100)}g | 
+                                  G: {Math.round(ca.alimento.grasas_100g * ca.cantidad_gramos / 100)}g
+                                </p>
+                              </div>
+                            ))}
+                            {(!comida.alimentos || comida.alimentos.length === 0) && (
+                              <p className="text-gray-500 text-center py-2">No hay alimentos en esta comida</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                  {(!comida.alimentos || comida.alimentos.length === 0) && (
-                    <p className="text-gray-500 text-center py-4">No hay alimentos en esta comida</p>
-                  )}
-                </div>
-              </div>
-            ))}
+                  </div>
+                )
+              ))}
+            </div>
           </div>
         ) : (
           <div className="bg-white p-6 rounded-lg shadow text-center">
             <p className="text-gray-500">Esta dieta no tiene comidas asignadas</p>
           </div>
         )}
+        
+        <CopyDayDietModal
+          isOpen={showCopyModal}
+          onClose={() => setShowCopyModal(false)}
+          dietaId={dietaId}
+          onSuccess={fetchDieta}
+        />
       </div>
     </Layout>
   );

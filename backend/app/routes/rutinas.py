@@ -14,18 +14,21 @@ router = APIRouter(tags=["rutinas"])
 class RutinaCreate(BaseModel):
     nombre: str
     fecha_inicio: Optional[datetime] = None
+    fecha_vencimiento: Optional[datetime] = None
     notas: Optional[str] = None
     entrenamientos_semana: Optional[int] = 3
 
 class RutinaUpdate(BaseModel):
     nombre: Optional[str] = None
     fecha_inicio: Optional[datetime] = None
+    fecha_vencimiento: Optional[datetime] = None
     notas: Optional[str] = None
     entrenamientos_semana: Optional[int] = None
     activa: Optional[bool] = None
 
 class EjercicioCreate(BaseModel):
     ejercicio_base_id: int
+    dia: int = 1
     series: int
     repeticiones: int
     peso: Optional[float] = None
@@ -61,25 +64,32 @@ def get_rutinas(alumno_id: int, coach: Coach = Depends(get_current_coach), db: S
     return rutinas
 
 @router.post("/alumnos/{alumno_id}/rutinas")
-def create_rutina(alumno_id: int, rutina_data: RutinaCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
-    if not alumno:
-        raise HTTPException(status_code=404, detail="Alumno not found")
+def create_rutina(alumno_id: str, rutina_data: RutinaCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    # Handle standalone routines (alumno_id can be 'none')
+    if alumno_id != 'none':
+        alumno_id = int(alumno_id)
+        alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
+        if not alumno:
+            raise HTTPException(status_code=404, detail="Alumno not found")
+    else:
+        alumno_id = None
     
-    # Marcar rutina anterior como eliminada si existe
-    rutina_anterior = db.query(Rutina).filter(
-        Rutina.alumno_id == alumno_id,
-        Rutina.activa == True,
-        Rutina.eliminado == False
-    ).first()
-    if rutina_anterior:
-        rutina_anterior.eliminado = True
-        rutina_anterior.activa = False
+    # Marcar rutina anterior como eliminada si existe (only for assigned routines)
+    if alumno_id:
+        rutina_anterior = db.query(Rutina).filter(
+            Rutina.alumno_id == alumno_id,
+            Rutina.activa == True,
+            Rutina.eliminado == False
+        ).first()
+        if rutina_anterior:
+            rutina_anterior.eliminado = True
+            rutina_anterior.activa = False
     
     new_rutina = Rutina(
         alumno_id=alumno_id,
         nombre=rutina_data.nombre,
         fecha_inicio=rutina_data.fecha_inicio,
+        fecha_vencimiento=rutina_data.fecha_vencimiento,
         notas=rutina_data.notas,
         entrenamientos_semana=rutina_data.entrenamientos_semana
     )
@@ -156,6 +166,7 @@ def add_ejercicio(rutina_id: int, ejercicio_data: EjercicioCreate, coach: Coach 
     new_ejercicio = Ejercicio(
         rutina_id=rutina_id,
         ejercicio_base_id=ejercicio_data.ejercicio_base_id,
+        dia=ejercicio_data.dia,
         series=ejercicio_data.series,
         repeticiones=ejercicio_data.repeticiones,
         peso=ejercicio_data.peso,
@@ -333,6 +344,78 @@ def copy_rutina(rutina_id: int, target_alumno_id: int, coach: Coach = Depends(ge
     
     db.commit()
     return nueva_rutina
+
+class CopyDayRequest(BaseModel):
+    source_day: int
+    target_day: int
+
+@router.post("/rutinas/{rutina_id}/copy-day")
+def copy_day_exercises(rutina_id: int, copy_data: CopyDayRequest, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    """Copy all exercises from one day to another within the same routine"""
+    from sqlalchemy.orm import joinedload
+    from sqlalchemy.exc import SQLAlchemyError
+    
+    # Verify routine exists and belongs to coach
+    rutina = db.query(Rutina).join(Alumno).filter(
+        Rutina.id == rutina_id,
+        Alumno.coach_id == coach.id,
+        Rutina.eliminado == False
+    ).first()
+    
+    if not rutina:
+        raise HTTPException(status_code=404, detail="Rutina not found")
+    
+    # Validate day numbers
+    if not (1 <= copy_data.source_day <= 7) or not (1 <= copy_data.target_day <= 7):
+        raise HTTPException(status_code=400, detail="Day must be between 1 and 7")
+    
+    if copy_data.source_day == copy_data.target_day:
+        raise HTTPException(status_code=400, detail="Source and target day cannot be the same")
+    
+    try:
+        # Get exercises from source day
+        source_exercises = db.query(Ejercicio).options(
+            joinedload(Ejercicio.ejercicio_base)
+        ).filter(
+            Ejercicio.rutina_id == rutina_id,
+            Ejercicio.dia == copy_data.source_day
+        ).all()
+        
+        if not source_exercises:
+            raise HTTPException(status_code=404, detail=f"No exercises found for day {copy_data.source_day}")
+        
+        # Delete existing exercises in target day
+        db.query(Ejercicio).filter(
+            Ejercicio.rutina_id == rutina_id,
+            Ejercicio.dia == copy_data.target_day
+        ).delete()
+        
+        # Copy exercises to target day
+        copied_exercises = []
+        for exercise in source_exercises:
+            new_exercise = Ejercicio(
+                rutina_id=rutina_id,
+                ejercicio_base_id=exercise.ejercicio_base_id,
+                dia=copy_data.target_day,
+                series=exercise.series,
+                repeticiones=exercise.repeticiones,
+                peso=exercise.peso,
+                descanso=exercise.descanso,
+                notas=exercise.notas
+            )
+            db.add(new_exercise)
+            copied_exercises.append(new_exercise)
+        
+        db.commit()
+        
+        return {
+            "message": f"Copied {len(copied_exercises)} exercises from day {copy_data.source_day} to day {copy_data.target_day}",
+            "exercises_copied": len(copied_exercises)
+        }
+        
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error copying exercises")
 
 @router.get("/plantillas")
 def get_plantillas(coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):

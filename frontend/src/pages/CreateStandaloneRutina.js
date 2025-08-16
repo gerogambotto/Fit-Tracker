@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { rutinasAPI } from '../utils/api';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { rutinasAPI, alumnosAPI } from '../utils/api';
 import Layout from '../components/Layout';
 import EjercicioSelector from '../components/EjercicioSelector';
 
-const CreateRutina = () => {
-  const { alumnoId } = useParams();
+const CreateStandaloneRutina = () => {
   const navigate = useNavigate();
+  const [alumnos, setAlumnos] = useState([]);
   const [rutinaData, setRutinaData] = useState({
     nombre: '',
     notas: '',
     entrenamientos_semana: 3,
-    fecha_vencimiento: ''
+    fecha_vencimiento: '',
+    alumno_id: ''
   });
   const [diasEntrenamiento, setDiasEntrenamiento] = useState({});
   const [diaActual, setDiaActual] = useState(1);
@@ -25,8 +26,11 @@ const CreateRutina = () => {
     notas: ''
   });
 
-  // Inicializar días cuando cambia entrenamientos_semana
-  React.useEffect(() => {
+  useEffect(() => {
+    fetchAlumnos();
+  }, []);
+
+  useEffect(() => {
     const dias = {};
     for (let i = 1; i <= rutinaData.entrenamientos_semana; i++) {
       dias[i] = [];
@@ -34,6 +38,15 @@ const CreateRutina = () => {
     setDiasEntrenamiento(dias);
     setDiaActual(1);
   }, [rutinaData.entrenamientos_semana]);
+
+  const fetchAlumnos = async () => {
+    try {
+      const response = await alumnosAPI.getAll();
+      setAlumnos(response.data);
+    } catch (error) {
+      console.error('Error fetching alumnos:', error);
+    }
+  };
 
   const addEjercicio = () => {
     if (ejercicioForm.ejercicio_base_id && ejercicioForm.series && ejercicioForm.repeticiones) {
@@ -77,22 +90,25 @@ const CreateRutina = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (rutinaId) {
-      // Rutina ya existe, solo navegar
-      navigate(`/alumnos/${alumnoId}`);
+      navigate('/rutinas');
       return;
     }
 
     setIsCreatingRutina(true);
     try {
+      const alumnoId = rutinaData.alumno_id || null;
+      
       const rutinaResponse = await rutinasAPI.create(alumnoId, {
-        ...rutinaData,
+        nombre: rutinaData.nombre,
         fecha_inicio: new Date().toISOString(),
-        fecha_vencimiento: rutinaData.fecha_vencimiento ? rutinaData.fecha_vencimiento + 'T00:00:00' : null
+        fecha_vencimiento: rutinaData.fecha_vencimiento ? rutinaData.fecha_vencimiento + 'T00:00:00' : null,
+        notas: rutinaData.notas,
+        entrenamientos_semana: rutinaData.entrenamientos_semana
       });
 
       setRutinaId(rutinaResponse.data.id);
 
-      // Agregar ejercicios existentes
+      // Add existing exercises
       for (const [dia, ejercicios] of Object.entries(diasEntrenamiento)) {
         for (const ejercicio of ejercicios) {
           await rutinasAPI.addEjercicio(rutinaResponse.data.id, {
@@ -115,7 +131,6 @@ const CreateRutina = () => {
 
   const addEjercicioToRutina = async () => {
     if (!rutinaId || !ejercicioForm.ejercicio_base_id || !ejercicioForm.series || !ejercicioForm.repeticiones) {
-      // Si no hay rutina creada, solo agregar localmente
       addEjercicio();
       return;
     }
@@ -131,7 +146,6 @@ const CreateRutina = () => {
         notas: ejercicioForm.notas
       });
 
-      // Agregar también localmente para mostrar en la UI
       addEjercicio();
     } catch (error) {
       console.error('Error adding ejercicio:', error);
@@ -146,15 +160,27 @@ const CreateRutina = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4">Información de la Rutina</h2>
-            <input
-              type="text"
-              placeholder="Nombre de la rutina"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4"
-              value={rutinaData.nombre}
-              onChange={(e) => setRutinaData({ ...rutinaData, nombre: e.target.value })}
-              required
-            />
-            <div className="mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="Nombre de la rutina"
+                className="border border-gray-300 rounded-lg px-3 py-2"
+                value={rutinaData.nombre}
+                onChange={(e) => setRutinaData({ ...rutinaData, nombre: e.target.value })}
+                required
+              />
+              <select
+                className="border border-gray-300 rounded-lg px-3 py-2"
+                value={rutinaData.alumno_id}
+                onChange={(e) => setRutinaData({ ...rutinaData, alumno_id: e.target.value })}
+              >
+                <option value="">Sin asignar a alumno</option>
+                {alumnos.map(alumno => (
+                  <option key={alumno.id} value={alumno.id}>{alumno.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div className="mt-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de vencimiento:</label>
               <input
                 type="date"
@@ -173,29 +199,23 @@ const CreateRutina = () => {
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">Agregar Ejercicios por Día</h2>
+            <h2 className="text-xl font-semibold mb-4">Configurar Ejercicios</h2>
             
-            {/* Selector de días por semana */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Días de entrenamiento por semana:</label>
               <select
-                className="border border-gray-300 rounded-lg px-3 py-2 mb-4"
+                className="border border-gray-300 rounded-lg px-3 py-2"
                 value={rutinaData.entrenamientos_semana}
                 onChange={(e) => setRutinaData({ ...rutinaData, entrenamientos_semana: parseInt(e.target.value) })}
               >
-                <option value={1}>1 día por semana</option>
-                <option value={2}>2 días por semana</option>
-                <option value={3}>3 días por semana</option>
-                <option value={4}>4 días por semana</option>
-                <option value={5}>5 días por semana</option>
-                <option value={6}>6 días por semana</option>
-                <option value={7}>7 días por semana</option>
+                {[1,2,3,4,5,6,7].map(num => (
+                  <option key={num} value={num}>{num} día{num > 1 ? 's' : ''} por semana</option>
+                ))}
               </select>
             </div>
 
-            {/* Selector de día */}
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Seleccionar día de entrenamiento:</label>
+              <label className="block text-sm font-medium mb-2">Seleccionar día:</label>
               <div className="flex space-x-2">
                 {Array.from({ length: rutinaData.entrenamientos_semana }, (_, i) => i + 1).map(dia => (
                   <button
@@ -273,7 +293,7 @@ const CreateRutina = () => {
 
           {Object.keys(diasEntrenamiento).some(dia => diasEntrenamiento[dia].length > 0) && (
             <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4">Rutina por Días</h2>
+              <h2 className="text-xl font-semibold mb-4">Vista Previa de la Rutina</h2>
               <div className="space-y-6">
                 {Object.entries(diasEntrenamiento).map(([dia, ejercicios]) => (
                   ejercicios.length > 0 && (
@@ -320,7 +340,7 @@ const CreateRutina = () => {
             </button>
             <button
               type="button"
-              onClick={() => navigate(`/alumnos/${alumnoId}`)}
+              onClick={() => navigate('/rutinas')}
               className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg"
             >
               Cancelar
@@ -332,4 +352,4 @@ const CreateRutina = () => {
   );
 };
 
-export default CreateRutina;
+export default CreateStandaloneRutina;

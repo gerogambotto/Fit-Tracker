@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../utils/api';
 import { useNavigate, Link } from 'react-router-dom';
+import { getErrorFromResponse } from '../utils/errorHandler';
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -20,7 +21,7 @@ const Login = () => {
       login(response.data.access_token, response.data.coach);
       navigate('/dashboard');
     } catch (error) {
-      setError(error.response?.data?.detail || 'Error al iniciar sesión');
+      setError(getErrorFromResponse(error));
     } finally {
       setLoading(false);
     }

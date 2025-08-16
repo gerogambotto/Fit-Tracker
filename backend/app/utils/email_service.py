@@ -2,6 +2,7 @@ import os
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
+import html
 
 load_dotenv()
 
@@ -31,12 +32,12 @@ def send_payment_reminder(alumno_email: str, alumno_nombre: str, coach_nombre: s
             <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
                 <h2 style="color: #2563eb;">Recordatorio de Pago</h2>
                 
-                <p>Hola <strong>{alumno_nombre}</strong>,</p>
+                <p>Hola <strong>{html.escape(alumno_nombre)}</strong>,</p>
                 
                 <p>Este es un recordatorio amigable de que tu mensualidad de entrenamiento está próxima a vencer.</p>
                 
                 <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                    <p><strong>Coach:</strong> {coach_nombre}</p>
+                    <p><strong>Coach:</strong> {html.escape(coach_nombre)}</p>
                     <p><strong>Fecha de vencimiento:</strong> {datetime.now().strftime('%d/%m/%Y')}</p>
                 </div>
                 

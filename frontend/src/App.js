@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -14,6 +15,10 @@ import SelectDietaType from './pages/SelectDietaType';
 import CreateDieta from './pages/CreateDieta';
 import EditDieta from './pages/EditDieta';
 import ViewDieta from './pages/ViewDieta';
+import AllRutinas from './pages/AllRutinas';
+import AllDietas from './pages/AllDietas';
+import CreateStandaloneRutina from './pages/CreateStandaloneRutina';
+import CreateStandaloneDieta from './pages/CreateStandaloneDieta';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -38,7 +43,8 @@ const PublicRoute = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <NotificationProvider>
+        <Router>
         <div className="App">
           <Routes>
             <Route path="/login" element={
@@ -106,10 +112,31 @@ function App() {
                 <ViewDieta />
               </ProtectedRoute>
             } />
+            <Route path="/rutinas" element={
+              <ProtectedRoute>
+                <AllRutinas />
+              </ProtectedRoute>
+            } />
+            <Route path="/rutinas/create" element={
+              <ProtectedRoute>
+                <CreateStandaloneRutina />
+              </ProtectedRoute>
+            } />
+            <Route path="/dietas" element={
+              <ProtectedRoute>
+                <AllDietas />
+              </ProtectedRoute>
+            } />
+            <Route path="/dietas/create" element={
+              <ProtectedRoute>
+                <CreateStandaloneDieta />
+              </ProtectedRoute>
+            } />
             <Route path="/" element={<Navigate to="/dashboard" />} />
           </Routes>
         </div>
-      </Router>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

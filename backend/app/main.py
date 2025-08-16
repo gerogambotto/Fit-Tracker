@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime, timezone
 from app.database import engine
 from app.models.models import Base
 from app.routes import auth, alumnos, rutinas, dashboard, ejercicios_base, dietas
@@ -37,8 +38,17 @@ app.include_router(dietas.router)
 
 @app.get("/")
 def read_root():
-    return {"message": "FitTracker API is running"}
+    return {"message": "FitTracker API is running", "version": "1.0.0"}
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for monitoring"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "version": "1.0.0"
+    }
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    from uvicorn import run
+    run(app, host="0.0.0.0", port=8000)

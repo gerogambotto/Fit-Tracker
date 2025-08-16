@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { alumnosAPI, rutinasAPI, dietasAPI } from '../utils/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Layout from '../components/Layout';
+import PRChart from '../components/PRChart';
 
 const AlumnoDetail = () => {
   const { id } = useParams();
@@ -13,17 +14,30 @@ const AlumnoDetail = () => {
   const [pesoForm, setPesoForm] = useState({ peso: '' });
   const [showCobroForm, setShowCobroForm] = useState(false);
   const [cobroForm, setCobroForm] = useState({ fecha_cobro: '', notificaciones_activas: true });
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editForm, setEditForm] = useState({ nombre: '', altura: '', objetivo: '' });
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [selectedRutina, setSelectedRutina] = useState(null);
   const [alumnos, setAlumnos] = useState([]);
   const [targetAlumno, setTargetAlumno] = useState('');
   const [showPRForm, setShowPRForm] = useState(false);
   const [prForm, setPrForm] = useState({ ejercicio: '', peso: '', repeticiones: 1 });
+  const [showAllPRs, setShowAllPRs] = useState(false);
 
   useEffect(() => {
     fetchData();
     fetchAlumnos();
   }, [id]);
+
+  useEffect(() => {
+    if (dashboardData?.alumno) {
+      setEditForm({
+        nombre: dashboardData.alumno.nombre || '',
+        altura: dashboardData.alumno.altura || '',
+        objetivo: dashboardData.alumno.objetivo || ''
+      });
+    }
+  }, [dashboardData]);
 
   const fetchData = async () => {
     try {
@@ -72,6 +86,21 @@ const AlumnoDetail = () => {
       fetchData();
     } catch (error) {
       console.error('Error updating cobro:', error);
+    }
+  };
+
+  const handleUpdateAlumno = async (e) => {
+    e.preventDefault();
+    try {
+      await alumnosAPI.update(id, {
+        nombre: editForm.nombre,
+        altura: parseFloat(editForm.altura),
+        objetivo: editForm.objetivo
+      });
+      setShowEditForm(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating alumno:', error);
     }
   };
 
@@ -195,14 +224,57 @@ const AlumnoDetail = () => {
             <h1 className="text-3xl font-bold text-gray-900">
               {dashboardData?.alumno?.nombre}
             </h1>
-            <button
-              onClick={() => setShowCobroForm(!showCobroForm)}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
-            >
-              Configurar Cobro
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowEditForm(!showEditForm)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+              >
+                Editar Datos
+              </button>
+              <button
+                onClick={() => setShowCobroForm(!showCobroForm)}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
+              >
+                Configurar Cobro
+              </button>
+            </div>
           </div>
 
+          {showEditForm && (
+            <form onSubmit={handleUpdateAlumno} className="mb-4 p-4 bg-blue-50 rounded space-y-3">
+              <input
+                type="text"
+                placeholder="Nombre"
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                value={editForm.nombre}
+                onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })}
+                required
+              />
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Altura (m)"
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                value={editForm.altura}
+                onChange={(e) => setEditForm({ ...editForm, altura: e.target.value })}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Objetivo"
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                value={editForm.objetivo}
+                onChange={(e) => setEditForm({ ...editForm, objetivo: e.target.value })}
+                required
+              />
+              <button
+                type="submit"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded"
+              >
+                Actualizar
+              </button>
+            </form>
+          )}
           {showCobroForm && (
             <form onSubmit={handleUpdateCobro} className="mb-4 p-4 bg-purple-50 rounded space-y-3">
               <input
@@ -263,7 +335,7 @@ const AlumnoDetail = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Progreso de Peso</h2>
@@ -339,6 +411,20 @@ const AlumnoDetail = () => {
                       <p className="text-sm text-gray-600">
                         Fecha: {rutina.fecha_inicio ? new Date(rutina.fecha_inicio).toLocaleDateString() : 'No especificada'}
                       </p>
+                      {rutina.fecha_vencimiento && (
+                        <p className={`text-sm ${
+                          new Date(rutina.fecha_vencimiento) < new Date() 
+                            ? 'text-red-600 font-semibold' 
+                            : new Date(rutina.fecha_vencimiento) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                            ? 'text-yellow-600 font-semibold'
+                            : 'text-gray-600'
+                        }`}>
+                          Vence: {new Date(rutina.fecha_vencimiento).toLocaleDateString()}
+                          {new Date(rutina.fecha_vencimiento) < new Date() && ' (VENCIDA)'}
+                          {new Date(rutina.fecha_vencimiento) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) && 
+                           new Date(rutina.fecha_vencimiento) >= new Date() && ' (PRÓXIMA A VENCER)'}
+                        </p>
+                      )}
                       <p className="text-sm text-gray-600">
                         Ejercicios: {rutina.ejercicios?.length || 0} | Días: {rutina.entrenamientos_semana}
                       </p>
@@ -405,16 +491,21 @@ const AlumnoDetail = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Personal Records</h2>
-            <button
-              onClick={() => setShowPRForm(!showPRForm)}
-              className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm"
-            >
-              Agregar PR
-            </button>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <PRChart alumnoId={id} />
           </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Personal Records</h2>
+              <button
+                onClick={() => setShowPRForm(!showPRForm)}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm"
+              >
+                Agregar PR
+              </button>
+            </div>
 
           {showPRForm && (
             <form onSubmit={handleAddPR} className="mb-4 p-4 bg-orange-50 rounded space-y-3">
@@ -460,31 +551,42 @@ const AlumnoDetail = () => {
 
           <div className="space-y-3">
             {dashboardData?.personal_records?.length > 0 ? (
-              dashboardData.personal_records.map((pr) => (
-                <div key={pr.id} className="p-3 border border-gray-200 rounded flex justify-between items-center">
-                  <div>
-                    <h4 className="font-medium capitalize">
-                      {pr.ejercicio.replace('_', ' ')}
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      {pr.peso}kg × {pr.repeticiones} rep{pr.repeticiones > 1 ? 's' : ''}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(pr.fecha).toLocaleDateString()}
-                    </p>
+              <>
+                {(showAllPRs ? dashboardData.personal_records : dashboardData.personal_records.slice(0, 4)).map((pr) => (
+                  <div key={pr.id} className="p-3 border border-gray-200 rounded flex justify-between items-center">
+                    <div>
+                      <h4 className="font-medium capitalize">
+                        {pr.ejercicio.replace('_', ' ')}
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        {pr.peso}kg × {pr.repeticiones} rep{pr.repeticiones > 1 ? 's' : ''}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(pr.fecha).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => deletePR(pr.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+                    >
+                      Eliminar
+                    </button>
                   </div>
+                ))}
+                {dashboardData.personal_records.length > 4 && (
                   <button
-                    onClick={() => deletePR(pr.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+                    onClick={() => setShowAllPRs(!showAllPRs)}
+                    className="w-full text-center text-blue-600 hover:text-blue-800 text-sm py-2"
                   >
-                    Eliminar
+                    {showAllPRs ? 'Ver menos' : `Ver más (${dashboardData.personal_records.length - 4} más)`}
                   </button>
-                </div>
-              ))
+                )}
+              </>
             ) : (
               <p className="text-gray-500 text-center py-8">No hay personal records registrados</p>
             )}
           </div>
+        </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">

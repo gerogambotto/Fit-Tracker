@@ -2,12 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
+from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_db
 from app.models.models import Coach, Alumno, PesoAlumno, PersonalRecord, Dieta
 from app.middleware.auth import get_current_coach
 
 router = APIRouter(prefix="/alumnos", tags=["alumnos"])
+
+def get_alumno_by_id_and_coach(alumno_id: int, coach: Coach, db: Session) -> Alumno:
+    """Helper function to get alumno by ID and verify coach ownership"""
+    alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
+    if not alumno:
+        raise HTTPException(status_code=404, detail="Alumno not found")
+    return alumno
 
 class AlumnoCreate(BaseModel):
     nombre: str
@@ -43,28 +51,29 @@ def get_alumnos(coach: Coach = Depends(get_current_coach), db: Session = Depends
 
 @router.post("/")
 def create_alumno(alumno_data: AlumnoCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    new_alumno = Alumno(
-        coach_id=coach.id,
-        nombre=alumno_data.nombre,
-        email=alumno_data.email,
-        fecha_nacimiento=alumno_data.fecha_nacimiento,
-        altura=alumno_data.altura,
-        objetivo=alumno_data.objetivo,
-        fecha_cobro=alumno_data.fecha_cobro
-    )
-    
-    db.add(new_alumno)
-    db.commit()
-    db.refresh(new_alumno)
-    
-    return new_alumno
+    try:
+        new_alumno = Alumno(
+            coach_id=coach.id,
+            nombre=alumno_data.nombre,
+            email=alumno_data.email,
+            fecha_nacimiento=alumno_data.fecha_nacimiento,
+            altura=alumno_data.altura,
+            objetivo=alumno_data.objetivo,
+            fecha_cobro=alumno_data.fecha_cobro
+        )
+        
+        db.add(new_alumno)
+        db.commit()
+        db.refresh(new_alumno)
+        
+        return new_alumno
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error creating alumno")
 
 @router.get("/{alumno_id}")
 def get_alumno(alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
-    if not alumno:
-        raise HTTPException(status_code=404, detail="Alumno not found")
-    return alumno
+    return get_alumno_by_id_and_coach(alumno_id, coach, db)
 
 @router.patch("/{alumno_id}")
 def update_alumno(alumno_id: int, alumno_data: AlumnoUpdate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
@@ -107,7 +116,7 @@ def add_peso(alumno_id: int, peso_data: PesoCreate, coach: Coach = Depends(get_c
     new_peso = PesoAlumno(
         alumno_id=alumno_id,
         peso=peso_data.peso,
-        fecha=peso_data.fecha or datetime.utcnow()
+        fecha=peso_data.fecha or datetime.now(timezone.utc)
     )
     
     db.add(new_peso)
@@ -130,7 +139,7 @@ def add_personal_record(alumno_id: int, pr_data: PersonalRecordCreate, coach: Co
         ejercicio=pr_data.ejercicio,
         peso=pr_data.peso,
         repeticiones=pr_data.repeticiones,
-        fecha=pr_data.fecha or datetime.utcnow()
+        fecha=pr_data.fecha or datetime.now(timezone.utc)
     )
     
     db.add(new_pr)
@@ -153,6 +162,27 @@ def delete_personal_record(pr_id: int, coach: Coach = Depends(get_current_coach)
     db.commit()
     return {"message": "Personal Record deleted successfully"}
 
+@router.get("/{alumno_id}/pr-chart")
+def get_pr_chart_data(alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    alumno = get_alumno_by_id_and_coach(alumno_id, coach, db)
+    
+    prs = db.query(PersonalRecord).filter(
+        PersonalRecord.alumno_id == alumno_id
+    ).order_by(PersonalRecord.ejercicio, PersonalRecord.fecha).all()
+    
+    # Group by exercise
+    chart_data = {}
+    for pr in prs:
+        if pr.ejercicio not in chart_data:
+            chart_data[pr.ejercicio] = []
+        chart_data[pr.ejercicio].append({
+            "fecha": pr.fecha.isoformat(),
+            "peso": pr.peso,
+            "repeticiones": pr.repeticiones
+        })
+    
+    return chart_data
+
 @router.get("/{alumno_id}/dashboard")
 def get_alumno_dashboard(alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
@@ -165,7 +195,7 @@ def get_alumno_dashboard(alumno_id: int, coach: Coach = Depends(get_current_coac
     # Calcular edad
     edad = None
     if alumno.fecha_nacimiento:
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         birth_date = alumno.fecha_nacimiento.date()
         edad = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
     
