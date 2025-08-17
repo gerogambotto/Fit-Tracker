@@ -72,8 +72,9 @@ export const alumnosAPI = {
 
 // Rutinas endpoints
 export const rutinasAPI = {
+  getAll: () => api.get('/rutinas'),
   getByAlumno: (alumnoId) => api.get(`/alumnos/${alumnoId}/rutinas`),
-  create: (alumnoId, data) => api.post(`/alumnos/${alumnoId || 'none'}/rutinas`, data),
+  create: (alumnoId, data) => api.post(`/rutinas/create/${alumnoId || 'none'}`, data),
   getById: (id) => api.get(`/rutinas/${id}`),
   update: (id, data) => api.patch(`/rutinas/${id}`, data),
   delete: (id) => api.delete(`/rutinas/${id}`),
@@ -83,8 +84,8 @@ export const rutinasAPI = {
   copy: (rutinaId, targetAlumnoId) => api.post(`/rutinas/${rutinaId}/copy/${targetAlumnoId}`),
   copyDay: (rutinaId, sourceDay, targetDay) => api.post(`/rutinas/${rutinaId}/copy-day`, { source_day: sourceDay, target_day: targetDay }),
   saveAsTemplate: (rutinaId) => api.post(`/rutinas/${rutinaId}/save-as-template`),
-  getPlantillas: () => api.get('/plantillas'),
-  createFromTemplate: (plantillaId, alumnoId) => api.post(`/plantillas/${plantillaId}/create-rutina/${alumnoId}`),
+  getPlantillas: () => api.get('/rutinas/plantillas'),
+  createFromTemplate: (plantillaId, alumnoId) => api.post(`/rutinas/plantillas/${plantillaId}/create-rutina/${alumnoId}`),
 };
 
 // Ejercicios endpoints
@@ -107,9 +108,13 @@ export const ejerciciosBaseAPI = {
 
 // Dietas endpoints
 export const dietasAPI = {
+  getAll: () => api.get('/dietas'),
   getByAlumno: (alumnoId) => api.get(`/alumnos/${alumnoId}/dietas`),
   create: (alumnoId, data) => api.post(`/alumnos/${alumnoId || 'none'}/dietas`, data),
   getById: (id) => api.get(`/dietas/${id}`),
+  update: (id, data) => api.patch(`/dietas/${id}`, data),
+  delete: (id) => api.delete(`/dietas/${id}`),
+  copy: (dietaId, targetAlumnoId) => api.post(`/dietas/${dietaId}/copy/${targetAlumnoId}`),
   addComida: (id, data) => api.post(`/dietas/${id}/comidas`, data),
   addAlimentoToComida: (comidaId, data) => api.post(`/comidas/${comidaId}/alimentos`, data),
   deleteComidaAlimento: (id) => api.delete(`/comida-alimentos/${id}`),
@@ -117,8 +122,8 @@ export const dietasAPI = {
   deleteComida: (comidaId) => api.delete(`/comidas/${comidaId}`),
   copyDay: (dietaId, sourceDay, targetDay) => api.post(`/dietas/${dietaId}/copy-day`, { source_day: sourceDay, target_day: targetDay }),
   saveAsTemplate: (dietaId) => api.post(`/dietas/${dietaId}/save-as-template`),
-  getPlantillas: () => api.get('/dietas-plantillas'),
-  createFromTemplate: (plantillaId, alumnoId) => api.post(`/dietas-plantillas/${plantillaId}/create-dieta/${alumnoId}`),
+  getPlantillas: () => api.get('/dietas/plantillas'),
+  createFromTemplate: (plantillaId, alumnoId) => api.post(`/dietas/plantillas/${plantillaId}/create-dieta/${alumnoId}`),
 };
 
 // Alimentos endpoints

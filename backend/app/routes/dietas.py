@@ -8,7 +8,18 @@ from app.database import get_db
 from app.models.models import Coach, Alumno, Dieta, Comida, ComidaAlimento, Alimento, DietaPlantilla, ComidaPlantilla, ComidaPlantillaAlimento
 from app.middleware.auth import get_current_coach
 
-router = APIRouter(tags=["dietas"])
+router = APIRouter(prefix="/dietas", tags=["dietas"])
+
+@router.get("/")
+def get_all_dietas(coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    dietas = db.query(Dieta).options(
+        joinedload(Dieta.comidas).joinedload(Comida.alimentos).joinedload(ComidaAlimento.alimento),
+        joinedload(Dieta.alumno)
+    ).outerjoin(Alumno).filter(
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None)),
+        Dieta.eliminado == False
+    ).order_by(Dieta.activa.desc(), Dieta.id.desc()).all()
+    return dietas
 
 class DietaCreate(BaseModel):
     nombre: str
@@ -28,20 +39,6 @@ class ComidaUpdate(BaseModel):
 class ComidaAlimentoCreate(BaseModel):
     alimento_id: int
     cantidad_gramos: float
-
-@router.get("/alumnos/{alumno_id}/dietas")
-def get_dietas(alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
-    if not alumno:
-        raise HTTPException(status_code=404, detail="Alumno not found")
-    
-    dietas = db.query(Dieta).options(
-        joinedload(Dieta.comidas).joinedload(Comida.alimentos).joinedload(ComidaAlimento.alimento)
-    ).filter(
-        Dieta.alumno_id == alumno_id,
-        Dieta.eliminado == False
-    ).order_by(Dieta.activa.desc(), Dieta.id.desc()).all()
-    return dietas
 
 @router.post("/alumnos/{alumno_id}/dietas")
 def create_dieta(alumno_id: str, dieta_data: DietaCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
@@ -77,14 +74,116 @@ def create_dieta(alumno_id: str, dieta_data: DietaCreate, coach: Coach = Depends
     db.refresh(new_dieta)
     return new_dieta
 
-@router.get("/dietas/{dieta_id}")
+@router.patch("/{dieta_id}")
+def update_dieta(dieta_id: int, dieta_data: DietaCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    dieta = db.query(Dieta).outerjoin(Alumno).filter(
+        Dieta.id == dieta_id,
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None)),
+        Dieta.eliminado == False
+    ).first()
+    
+    if not dieta:
+        raise HTTPException(status_code=404, detail="Dieta not found")
+    
+    for field, value in dieta_data.dict(exclude_unset=True).items():
+        setattr(dieta, field, value)
+    
+    db.commit()
+    db.refresh(dieta)
+    return dieta
+
+@router.delete("/{dieta_id}")
+def delete_dieta(dieta_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    dieta = db.query(Dieta).outerjoin(Alumno).filter(
+        Dieta.id == dieta_id,
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None)),
+        Dieta.eliminado == False
+    ).first()
+    
+    if not dieta:
+        raise HTTPException(status_code=404, detail="Dieta not found")
+    
+    dieta.eliminado = True
+    dieta.activa = False
+    db.commit()
+    return {"message": "Dieta deleted successfully"}
+
+@router.post("/{dieta_id}/copy/{target_alumno_id}")
+def copy_dieta(dieta_id: int, target_alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    # Verificar dieta original
+    dieta_original = db.query(Dieta).options(
+        joinedload(Dieta.comidas).joinedload(Comida.alimentos).joinedload(ComidaAlimento.alimento)
+    ).outerjoin(Alumno).filter(
+        Dieta.id == dieta_id,
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None)),
+        Dieta.eliminado == False
+    ).first()
+    
+    if not dieta_original:
+        raise HTTPException(status_code=404, detail="Dieta not found")
+    
+    # Verificar alumno destino
+    target_alumno = db.query(Alumno).filter(
+        Alumno.id == target_alumno_id,
+        Alumno.coach_id == coach.id
+    ).first()
+    
+    if not target_alumno:
+        raise HTTPException(status_code=404, detail="Target alumno not found")
+    
+    # Marcar dieta anterior como eliminada
+    dieta_anterior = db.query(Dieta).filter(
+        Dieta.alumno_id == target_alumno_id,
+        Dieta.activa == True,
+        Dieta.eliminado == False
+    ).first()
+    if dieta_anterior:
+        dieta_anterior.eliminado = True
+        dieta_anterior.activa = False
+    
+    # Crear nueva dieta
+    nueva_dieta = Dieta(
+        alumno_id=target_alumno_id,
+        nombre=f"{dieta_original.nombre}",
+        fecha_inicio=dieta_original.fecha_inicio,
+        notas=dieta_original.notas
+    )
+    
+    db.add(nueva_dieta)
+    db.flush()
+    db.refresh(nueva_dieta)
+    
+    # Copiar comidas
+    for comida_original in dieta_original.comidas:
+        nueva_comida = Comida(
+            dieta_id=nueva_dieta.id,
+            nombre=comida_original.nombre,
+            dia=comida_original.dia,
+            orden=comida_original.orden
+        )
+        db.add(nueva_comida)
+        db.flush()
+        
+        # Copiar alimentos
+        for ca_original in comida_original.alimentos:
+            nuevo_ca = ComidaAlimento(
+                comida_id=nueva_comida.id,
+                alimento_id=ca_original.alimento_id,
+                cantidad_gramos=ca_original.cantidad_gramos
+            )
+            db.add(nuevo_ca)
+    
+    db.commit()
+    return nueva_dieta
+
+@router.get("/{dieta_id}")
 def get_dieta(dieta_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     dieta = db.query(Dieta).options(
         joinedload(Dieta.comidas).joinedload(Comida.alimentos).joinedload(ComidaAlimento.alimento),
         joinedload(Dieta.alumno)
-    ).join(Alumno).filter(
+    ).outerjoin(Alumno).filter(
         Dieta.id == dieta_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None)),
         Dieta.eliminado == False
     ).first()
     
@@ -93,11 +192,11 @@ def get_dieta(dieta_id: int, coach: Coach = Depends(get_current_coach), db: Sess
     
     return dieta
 
-@router.post("/dietas/{dieta_id}/comidas")
+@router.post("/{dieta_id}/comidas")
 def add_comida(dieta_id: int, comida_data: ComidaCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    dieta = db.query(Dieta).join(Alumno).filter(
+    dieta = db.query(Dieta).outerjoin(Alumno).filter(
         Dieta.id == dieta_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None)),
         Dieta.eliminado == False
     ).first()
     
@@ -199,20 +298,20 @@ def delete_comida(comida_id: int, coach: Coach = Depends(get_current_coach), db:
     db.commit()
     return {"message": "Comida deleted successfully"}
 
-@router.get("/dietas-plantillas")
+@router.get("/plantillas")
 def get_dietas_plantillas(coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     plantillas = db.query(DietaPlantilla).options(
         joinedload(DietaPlantilla.comidas).joinedload(ComidaPlantilla.alimentos).joinedload(ComidaPlantillaAlimento.alimento)
     ).filter(DietaPlantilla.coach_id == coach.id).all()
     return plantillas
 
-@router.post("/dietas/{dieta_id}/save-as-template")
+@router.post("/{dieta_id}/save-as-template")
 def save_dieta_as_template(dieta_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     dieta = db.query(Dieta).options(
         joinedload(Dieta.comidas).joinedload(Comida.alimentos).joinedload(ComidaAlimento.alimento)
-    ).join(Alumno).filter(
+    ).outerjoin(Alumno).filter(
         Dieta.id == dieta_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None)),
         Dieta.eliminado == False
     ).first()
     
@@ -253,7 +352,7 @@ def save_dieta_as_template(dieta_id: int, coach: Coach = Depends(get_current_coa
     db.commit()
     return plantilla
 
-@router.post("/dietas-plantillas/{plantilla_id}/create-dieta/{alumno_id}")
+@router.post("/plantillas/{plantilla_id}/create-dieta/{alumno_id}")
 def create_dieta_from_template(plantilla_id: int, alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     # Verificar plantilla
     plantilla = db.query(DietaPlantilla).options(
@@ -322,13 +421,13 @@ class CopyDayRequest(BaseModel):
     source_day: int
     target_day: int
 
-@router.post("/dietas/{dieta_id}/copy-day")
+@router.post("/{dieta_id}/copy-day")
 def copy_day_meals(dieta_id: int, copy_data: CopyDayRequest, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     """Copy all meals from one day to another within the same diet"""
     # Verify diet exists and belongs to coach
-    dieta = db.query(Dieta).join(Alumno).filter(
+    dieta = db.query(Dieta).outerjoin(Alumno).filter(
         Dieta.id == dieta_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None)),
         Dieta.eliminado == False
     ).first()
     

@@ -11,15 +11,28 @@ const PRChart = ({ alumnoId }) => {
     fetchPRData();
   }, [alumnoId]);
 
+  useEffect(() => {
+    const handlePRUpdate = () => {
+      fetchPRData();
+    };
+
+    window.addEventListener('prUpdated', handlePRUpdate);
+    return () => window.removeEventListener('prUpdated', handlePRUpdate);
+  }, []);
+
   const fetchPRData = async () => {
     try {
       const response = await alumnosAPI.getPRChart(alumnoId);
       setPrData(response.data);
       
-      // Set first exercise as default
+      // Set first exercise as default only if no exercise is selected
       const exercises = Object.keys(response.data);
-      if (exercises.length > 0) {
+      if (exercises.length > 0 && !selectedExercise) {
         setSelectedExercise(exercises[0]);
+      }
+      // If selected exercise no longer exists, select first available
+      if (selectedExercise && !exercises.includes(selectedExercise)) {
+        setSelectedExercise(exercises[0] || '');
       }
     } catch (error) {
       console.error('Error fetching PR data:', error);
@@ -84,6 +97,7 @@ const PRChart = ({ alumnoId }) => {
               stroke="#3B82F6" 
               strokeWidth={2}
               name="Peso (kg)"
+              yAxisId="left"
             />
             <Line 
               type="monotone" 

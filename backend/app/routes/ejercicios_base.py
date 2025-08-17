@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from pydantic import BaseModel
 from typing import List
 from app.database import get_db
@@ -36,8 +37,11 @@ def create_ejercicio_base(ejercicio_data: EjercicioBaseCreate, db: Session = Dep
         categoria=ejercicio_data.categoria
     )
     
-    db.add(new_ejercicio)
-    db.commit()
-    db.refresh(new_ejercicio)
-    
-    return new_ejercicio
+    try:
+        db.add(new_ejercicio)
+        db.commit()
+        db.refresh(new_ejercicio)
+        return new_ejercicio
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error creating ejercicio base")

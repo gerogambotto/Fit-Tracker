@@ -20,8 +20,8 @@ def check_payment_reminders():
         
         # Buscar alumnos que necesitan notificación
         alumnos_a_cobrar = db.query(Alumno).join(Coach).filter(
-            Alumno.fecha_cobro.isnot(None),
-            Alumno.notificaciones_activas == True,
+            Alumno.fecha_cobro.is_not(None),
+            Alumno.notificaciones_activas.is_(True),
             Alumno.fecha_cobro <= today,
             # No notificado en los últimos 30 días
             (Alumno.ultima_notificacion.is_(None)) | 
@@ -33,6 +33,11 @@ def check_payment_reminders():
         
         for alumno in alumnos_a_cobrar:
             try:
+                # Validate required fields
+                if not alumno.email or not alumno.nombre or not alumno.coach.nombre:
+                    logger.warning(f"Skipping alumno {alumno.id}: missing required fields")
+                    continue
+                    
                 success = send_payment_reminder(
                     alumno_email=alumno.email,
                     alumno_nombre=alumno.nombre,

@@ -177,6 +177,8 @@ const AlumnoDetail = () => {
       setPrForm({ ejercicio: '', peso: '', repeticiones: 1 });
       setShowPRForm(false);
       fetchData();
+      // Trigger PR chart refresh
+      window.dispatchEvent(new CustomEvent('prUpdated'));
     } catch (error) {
       console.error('Error adding PR:', error);
     }
@@ -186,6 +188,8 @@ const AlumnoDetail = () => {
     try {
       await alumnosAPI.deletePersonalRecord(prId);
       fetchData();
+      // Trigger PR chart refresh
+      window.dispatchEvent(new CustomEvent('prUpdated'));
     } catch (error) {
       console.error('Error deleting PR:', error);
     }

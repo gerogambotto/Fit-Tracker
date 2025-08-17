@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { rutinasAPI } from '../utils/api';
 import Layout from '../components/Layout';
@@ -7,6 +7,7 @@ import EjercicioSelector from '../components/EjercicioSelector';
 const CreateRutina = () => {
   const { alumnoId } = useParams();
   const navigate = useNavigate();
+  const ejercicioSelectorRef = useRef();
   const [rutinaData, setRutinaData] = useState({
     nombre: '',
     notas: '',
@@ -61,6 +62,11 @@ const CreateRutina = () => {
         descanso: '',
         notas: ''
       });
+      
+      // Clear ejercicio selector
+      if (ejercicioSelectorRef.current?.clearSelection) {
+        ejercicioSelectorRef.current.clearSelection();
+      }
     }
   };
 
@@ -71,18 +77,8 @@ const CreateRutina = () => {
     }));
   };
 
-  const [rutinaId, setRutinaId] = useState(null);
-  const [isCreatingRutina, setIsCreatingRutina] = useState(false);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (rutinaId) {
-      // Rutina ya existe, solo navegar
-      navigate(`/alumnos/${alumnoId}`);
-      return;
-    }
-
-    setIsCreatingRutina(true);
     try {
       const rutinaResponse = await rutinasAPI.create(alumnoId, {
         ...rutinaData,
@@ -90,9 +86,7 @@ const CreateRutina = () => {
         fecha_vencimiento: rutinaData.fecha_vencimiento ? rutinaData.fecha_vencimiento + 'T00:00:00' : null
       });
 
-      setRutinaId(rutinaResponse.data.id);
-
-      // Agregar ejercicios existentes
+      // Agregar ejercicios por día
       for (const [dia, ejercicios] of Object.entries(diasEntrenamiento)) {
         for (const ejercicio of ejercicios) {
           await rutinasAPI.addEjercicio(rutinaResponse.data.id, {
@@ -106,37 +100,14 @@ const CreateRutina = () => {
           });
         }
       }
+
+      navigate(`/alumnos/${alumnoId}`);
     } catch (error) {
       console.error('Error creating rutina:', error);
-    } finally {
-      setIsCreatingRutina(false);
     }
   };
 
-  const addEjercicioToRutina = async () => {
-    if (!rutinaId || !ejercicioForm.ejercicio_base_id || !ejercicioForm.series || !ejercicioForm.repeticiones) {
-      // Si no hay rutina creada, solo agregar localmente
-      addEjercicio();
-      return;
-    }
 
-    try {
-      await rutinasAPI.addEjercicio(rutinaId, {
-        ejercicio_base_id: ejercicioForm.ejercicio_base_id,
-        dia: diaActual,
-        series: parseInt(ejercicioForm.series),
-        repeticiones: parseInt(ejercicioForm.repeticiones),
-        peso: ejercicioForm.peso ? parseFloat(ejercicioForm.peso) : null,
-        descanso: parseInt(ejercicioForm.descanso) || 60,
-        notas: ejercicioForm.notas
-      });
-
-      // Agregar también localmente para mostrar en la UI
-      addEjercicio();
-    } catch (error) {
-      console.error('Error adding ejercicio:', error);
-    }
-  };
 
   return (
     <Layout>
@@ -218,6 +189,7 @@ const CreateRutina = () => {
               <h3 className="font-medium mb-3">Agregar ejercicio al Día {diaActual}</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
                 <EjercicioSelector
+                  ref={ejercicioSelectorRef}
                   onSelect={(ejercicio) => setEjercicioForm({ 
                     ...ejercicioForm, 
                     ejercicio_base_id: ejercicio.id,
@@ -255,7 +227,7 @@ const CreateRutina = () => {
                 />
                 <button
                   type="button"
-                  onClick={addEjercicioToRutina}
+                  onClick={addEjercicio}
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
                 >
                   Agregar
@@ -313,10 +285,10 @@ const CreateRutina = () => {
           <div className="flex space-x-4">
             <button
               type="submit"
-              disabled={!rutinaData.nombre || isCreatingRutina}
+              disabled={!rutinaData.nombre}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50"
             >
-              {rutinaId ? 'Finalizar' : isCreatingRutina ? 'Creando...' : 'Crear Rutina'}
+              Crear Rutina
             </button>
             <button
               type="button"

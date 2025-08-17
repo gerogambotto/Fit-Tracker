@@ -18,7 +18,7 @@ class Alumno(Base):
     __tablename__ = "alumnos"
     
     id = Column(Integer, primary_key=True)
-    coach_id = Column(Integer, ForeignKey("coaches.id"))
+    coach_id = Column(Integer, ForeignKey("coaches.id"), index=True)
     nombre = Column(String(100))
     email = Column(String(100))
     fecha_nacimiento = Column(DateTime)
@@ -39,7 +39,7 @@ class PesoAlumno(Base):
     __tablename__ = "pesos_alumno"
     
     id = Column(Integer, primary_key=True)
-    alumno_id = Column(Integer, ForeignKey("alumnos.id"))
+    alumno_id = Column(Integer, ForeignKey("alumnos.id"), index=True)
     peso = Column(Float)
     fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
@@ -49,7 +49,7 @@ class Rutina(Base):
     __tablename__ = "rutinas"
     
     id = Column(Integer, primary_key=True)
-    alumno_id = Column(Integer, ForeignKey("alumnos.id"))
+    alumno_id = Column(Integer, ForeignKey("alumnos.id"), index=True)
     nombre = Column(String(100))
     fecha_inicio = Column(DateTime)
     notas = Column(Text)
@@ -73,8 +73,8 @@ class Ejercicio(Base):
     __tablename__ = "ejercicios"
     
     id = Column(Integer, primary_key=True)
-    rutina_id = Column(Integer, ForeignKey("rutinas.id"))
-    ejercicio_base_id = Column(Integer, ForeignKey("ejercicios_base.id"))
+    rutina_id = Column(Integer, ForeignKey("rutinas.id"), index=True)
+    ejercicio_base_id = Column(Integer, ForeignKey("ejercicios_base.id"), index=True)
     dia = Column(Integer, default=1)  # día de la semana (1-7)
     series = Column(Integer)
     repeticiones = Column(Integer)

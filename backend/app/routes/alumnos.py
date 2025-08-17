@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_db
-from app.models.models import Coach, Alumno, PesoAlumno, PersonalRecord, Dieta
+from app.models.models import Coach, Alumno, PesoAlumno, PersonalRecord, Dieta, Rutina, Ejercicio
 from app.middleware.auth import get_current_coach
 
 router = APIRouter(prefix="/alumnos", tags=["alumnos"])
@@ -218,3 +218,35 @@ def get_alumno_dashboard(alumno_id: int, coach: Coach = Depends(get_current_coac
         "rutinas": [r for r in alumno.rutinas if not r.eliminado],
         "dietas": [d for d in alumno.dietas if not d.eliminado]
     }
+
+@router.get("/{alumno_id}/rutinas")
+def get_rutinas(alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
+    alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
+    if not alumno:
+        raise HTTPException(status_code=404, detail="Alumno not found")
+    
+    rutinas = db.query(Rutina).options(
+        joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base)
+    ).filter(
+        Rutina.alumno_id == alumno_id,
+        Rutina.eliminado == False
+    ).order_by(Rutina.activa.desc(), Rutina.id.desc()).all()
+    return rutinas
+
+@router.get("/{alumno_id}/dietas")
+def get_dietas(alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
+    alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
+    if not alumno:
+        raise HTTPException(status_code=404, detail="Alumno not found")
+    
+    dietas = db.query(Dieta).options(
+        joinedload(Dieta.comidas)
+    ).filter(
+        Dieta.alumno_id == alumno_id,
+        Dieta.eliminado == False
+    ).order_by(Dieta.activa.desc(), Dieta.id.desc()).all()
+    return dietas

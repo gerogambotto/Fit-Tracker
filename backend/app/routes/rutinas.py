@@ -9,7 +9,20 @@ from app.middleware.auth import get_current_coach
 from app.utils.pdf_generator import generate_rutina_pdf
 from app.utils.excel_generator import generate_rutina_excel
 
-router = APIRouter(tags=["rutinas"])
+router = APIRouter(prefix="/rutinas", tags=["rutinas"])
+
+@router.get("/")
+def get_all_rutinas(coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
+    rutinas = db.query(Rutina).options(
+        joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base),
+        joinedload(Rutina.alumno)
+    ).outerjoin(Alumno).filter(
+        (Alumno.coach_id == coach.id) | (Rutina.alumno_id.is_(None)),
+        Rutina.eliminado == False
+    ).order_by(Rutina.activa.desc(), Rutina.id.desc()).all()
+    return rutinas
 
 class RutinaCreate(BaseModel):
     nombre: str
@@ -47,23 +60,7 @@ class PesoUpdate(BaseModel):
     peso: float
     fecha: Optional[datetime] = None
 
-@router.get("/alumnos/{alumno_id}/rutinas")
-def get_rutinas(alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    from sqlalchemy.orm import joinedload
-    
-    alumno = db.query(Alumno).filter(Alumno.id == alumno_id, Alumno.coach_id == coach.id).first()
-    if not alumno:
-        raise HTTPException(status_code=404, detail="Alumno not found")
-    
-    rutinas = db.query(Rutina).options(
-        joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base)
-    ).filter(
-        Rutina.alumno_id == alumno_id,
-        Rutina.eliminado == False
-    ).order_by(Rutina.activa.desc(), Rutina.id.desc()).all()
-    return rutinas
-
-@router.post("/alumnos/{alumno_id}/rutinas")
+@router.post("/create/{alumno_id}")
 def create_rutina(alumno_id: str, rutina_data: RutinaCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     # Handle standalone routines (alumno_id can be 'none')
     if alumno_id != 'none':
@@ -100,16 +97,25 @@ def create_rutina(alumno_id: str, rutina_data: RutinaCreate, coach: Coach = Depe
     
     return new_rutina
 
-@router.get("/rutinas/{rutina_id}")
+@router.get("/plantillas")
+def get_plantillas(coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
+    plantillas = db.query(RutinaPlantilla).options(
+        joinedload(RutinaPlantilla.ejercicios).joinedload(EjercicioPlantilla.ejercicio_base)
+    ).filter(RutinaPlantilla.coach_id == coach.id).all()
+    return plantillas
+
+@router.get("/{rutina_id}")
 def get_rutina(rutina_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     from sqlalchemy.orm import joinedload
     
     rutina = db.query(Rutina).options(
         joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base),
         joinedload(Rutina.alumno)
-    ).join(Alumno).filter(
+    ).outerjoin(Alumno).filter(
         Rutina.id == rutina_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Rutina.alumno_id.is_(None)),
         Rutina.eliminado == False
     ).first()
     
@@ -118,11 +124,11 @@ def get_rutina(rutina_id: int, coach: Coach = Depends(get_current_coach), db: Se
     
     return rutina
 
-@router.patch("/rutinas/{rutina_id}")
+@router.patch("/{rutina_id}")
 def update_rutina(rutina_id: int, rutina_data: RutinaUpdate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    rutina = db.query(Rutina).join(Alumno).filter(
+    rutina = db.query(Rutina).outerjoin(Alumno).filter(
         Rutina.id == rutina_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Rutina.alumno_id.is_(None)),
         Rutina.eliminado == False
     ).first()
     
@@ -136,11 +142,11 @@ def update_rutina(rutina_id: int, rutina_data: RutinaUpdate, coach: Coach = Depe
     db.refresh(rutina)
     return rutina
 
-@router.delete("/rutinas/{rutina_id}")
+@router.delete("/{rutina_id}")
 def delete_rutina(rutina_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    rutina = db.query(Rutina).join(Alumno).filter(
+    rutina = db.query(Rutina).outerjoin(Alumno).filter(
         Rutina.id == rutina_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Rutina.alumno_id.is_(None)),
         Rutina.eliminado == False
     ).first()
     
@@ -152,33 +158,38 @@ def delete_rutina(rutina_id: int, coach: Coach = Depends(get_current_coach), db:
     db.commit()
     return {"message": "Rutina deleted successfully"}
 
-@router.post("/rutinas/{rutina_id}/ejercicios")
+@router.post("/{rutina_id}/ejercicios")
 def add_ejercicio(rutina_id: int, ejercicio_data: EjercicioCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    rutina = db.query(Rutina).join(Alumno).filter(
+    # Handle both assigned and standalone routines
+    rutina = db.query(Rutina).outerjoin(Alumno).filter(
         Rutina.id == rutina_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Rutina.alumno_id.is_(None)),
         Rutina.eliminado == False
     ).first()
     
     if not rutina:
         raise HTTPException(status_code=404, detail="Rutina not found")
     
-    new_ejercicio = Ejercicio(
-        rutina_id=rutina_id,
-        ejercicio_base_id=ejercicio_data.ejercicio_base_id,
-        dia=ejercicio_data.dia,
-        series=ejercicio_data.series,
-        repeticiones=ejercicio_data.repeticiones,
-        peso=ejercicio_data.peso,
-        descanso=ejercicio_data.descanso,
-        notas=ejercicio_data.notas
-    )
-    
-    db.add(new_ejercicio)
-    db.commit()
-    db.refresh(new_ejercicio)
-    
-    return new_ejercicio
+    try:
+        new_ejercicio = Ejercicio(
+            rutina_id=rutina_id,
+            ejercicio_base_id=ejercicio_data.ejercicio_base_id,
+            dia=ejercicio_data.dia,
+            series=ejercicio_data.series,
+            repeticiones=ejercicio_data.repeticiones,
+            peso=ejercicio_data.peso,
+            descanso=ejercicio_data.descanso,
+            notas=ejercicio_data.notas
+        )
+        
+        db.add(new_ejercicio)
+        db.commit()
+        db.refresh(new_ejercicio)
+        
+        return new_ejercicio
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error adding ejercicio")
 
 @router.patch("/ejercicios/{ejercicio_id}")
 def update_ejercicio(ejercicio_id: int, ejercicio_data: EjercicioUpdate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
@@ -243,7 +254,7 @@ def delete_peso(peso_id: int, coach: Coach = Depends(get_current_coach), db: Ses
     db.commit()
     return {"message": "Peso deleted successfully"}
 
-@router.get("/rutinas/{rutina_id}/pdf")
+@router.get("/{rutina_id}/pdf")
 def download_rutina_pdf(rutina_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     rutina = db.query(Rutina).join(Alumno).filter(
         Rutina.id == rutina_id,
@@ -262,7 +273,7 @@ def download_rutina_pdf(rutina_id: int, coach: Coach = Depends(get_current_coach
         headers={"Content-Disposition": f"attachment; filename=rutina_{rutina.nombre}.pdf"}
     )
 
-@router.get("/rutinas/{rutina_id}/excel")
+@router.get("/{rutina_id}/excel")
 def download_rutina_excel(rutina_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     rutina = db.query(Rutina).join(Alumno).filter(
         Rutina.id == rutina_id,
@@ -281,16 +292,16 @@ def download_rutina_excel(rutina_id: int, coach: Coach = Depends(get_current_coa
         headers={"Content-Disposition": f"attachment; filename=rutina_{rutina.nombre}.xlsx"}
     )
 
-@router.post("/rutinas/{rutina_id}/copy/{target_alumno_id}")
+@router.post("/{rutina_id}/copy/{target_alumno_id}")
 def copy_rutina(rutina_id: int, target_alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     from sqlalchemy.orm import joinedload
     
     # Verificar rutina original
     rutina_original = db.query(Rutina).options(
         joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base)
-    ).join(Alumno).filter(
+    ).outerjoin(Alumno).filter(
         Rutina.id == rutina_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Rutina.alumno_id.is_(None)),
         Rutina.eliminado == False
     ).first()
     
@@ -326,7 +337,7 @@ def copy_rutina(rutina_id: int, target_alumno_id: int, coach: Coach = Depends(ge
     )
     
     db.add(nueva_rutina)
-    db.commit()
+    db.flush()  # Get ID without committing
     db.refresh(nueva_rutina)
     
     # Copiar ejercicios
@@ -342,23 +353,23 @@ def copy_rutina(rutina_id: int, target_alumno_id: int, coach: Coach = Depends(ge
         )
         db.add(nuevo_ejercicio)
     
-    db.commit()
+    db.commit()  # Single commit for all operations
     return nueva_rutina
 
 class CopyDayRequest(BaseModel):
     source_day: int
     target_day: int
 
-@router.post("/rutinas/{rutina_id}/copy-day")
+@router.post("/{rutina_id}/copy-day")
 def copy_day_exercises(rutina_id: int, copy_data: CopyDayRequest, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     """Copy all exercises from one day to another within the same routine"""
     from sqlalchemy.orm import joinedload
     from sqlalchemy.exc import SQLAlchemyError
     
     # Verify routine exists and belongs to coach
-    rutina = db.query(Rutina).join(Alumno).filter(
+    rutina = db.query(Rutina).outerjoin(Alumno).filter(
         Rutina.id == rutina_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Rutina.alumno_id.is_(None)),
         Rutina.eliminado == False
     ).first()
     
@@ -417,15 +428,6 @@ def copy_day_exercises(rutina_id: int, copy_data: CopyDayRequest, coach: Coach =
         db.rollback()
         raise HTTPException(status_code=500, detail="Error copying exercises")
 
-@router.get("/plantillas")
-def get_plantillas(coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    from sqlalchemy.orm import joinedload
-    
-    plantillas = db.query(RutinaPlantilla).options(
-        joinedload(RutinaPlantilla.ejercicios).joinedload(EjercicioPlantilla.ejercicio_base)
-    ).filter(RutinaPlantilla.coach_id == coach.id).all()
-    return plantillas
-
 @router.post("/plantillas")
 def create_plantilla(plantilla_data: RutinaCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     nueva_plantilla = RutinaPlantilla(
@@ -440,15 +442,15 @@ def create_plantilla(plantilla_data: RutinaCreate, coach: Coach = Depends(get_cu
     db.refresh(nueva_plantilla)
     return nueva_plantilla
 
-@router.post("/rutinas/{rutina_id}/save-as-template")
+@router.post("/{rutina_id}/save-as-template")
 def save_as_template(rutina_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     from sqlalchemy.orm import joinedload
     
     rutina = db.query(Rutina).options(
         joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base)
-    ).join(Alumno).filter(
+    ).outerjoin(Alumno).filter(
         Rutina.id == rutina_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Rutina.alumno_id.is_(None)),
         Rutina.eliminado == False
     ).first()
     

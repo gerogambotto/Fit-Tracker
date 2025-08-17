@@ -84,17 +84,8 @@ const CreateStandaloneRutina = () => {
     }));
   };
 
-  const [rutinaId, setRutinaId] = useState(null);
-  const [isCreatingRutina, setIsCreatingRutina] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (rutinaId) {
-      navigate('/rutinas');
-      return;
-    }
-
-    setIsCreatingRutina(true);
+  const handleSubmit = async () => {
+    console.log('Creating routine with data:', rutinaData);
     try {
       const alumnoId = rutinaData.alumno_id || null;
       
@@ -105,10 +96,10 @@ const CreateStandaloneRutina = () => {
         notas: rutinaData.notas,
         entrenamientos_semana: rutinaData.entrenamientos_semana
       });
+      
+      console.log('Routine created:', rutinaResponse.data);
 
-      setRutinaId(rutinaResponse.data.id);
-
-      // Add existing exercises
+      // Add exercises by day
       for (const [dia, ejercicios] of Object.entries(diasEntrenamiento)) {
         for (const ejercicio of ejercicios) {
           await rutinasAPI.addEjercicio(rutinaResponse.data.id, {
@@ -122,33 +113,10 @@ const CreateStandaloneRutina = () => {
           });
         }
       }
+
+      navigate('/rutinas');
     } catch (error) {
       console.error('Error creating rutina:', error);
-    } finally {
-      setIsCreatingRutina(false);
-    }
-  };
-
-  const addEjercicioToRutina = async () => {
-    if (!rutinaId || !ejercicioForm.ejercicio_base_id || !ejercicioForm.series || !ejercicioForm.repeticiones) {
-      addEjercicio();
-      return;
-    }
-
-    try {
-      await rutinasAPI.addEjercicio(rutinaId, {
-        ejercicio_base_id: ejercicioForm.ejercicio_base_id,
-        dia: diaActual,
-        series: parseInt(ejercicioForm.series),
-        repeticiones: parseInt(ejercicioForm.repeticiones),
-        peso: ejercicioForm.peso ? parseFloat(ejercicioForm.peso) : null,
-        descanso: parseInt(ejercicioForm.descanso) || 60,
-        notas: ejercicioForm.notas
-      });
-
-      addEjercicio();
-    } catch (error) {
-      console.error('Error adding ejercicio:', error);
     }
   };
 
@@ -157,7 +125,7 @@ const CreateStandaloneRutina = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <h1 className="text-3xl font-bold text-gray-900">Crear Nueva Rutina</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4">Información de la Rutina</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -275,7 +243,7 @@ const CreateStandaloneRutina = () => {
                 />
                 <button
                   type="button"
-                  onClick={addEjercicioToRutina}
+                  onClick={addEjercicio}
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
                 >
                   Agregar
@@ -332,11 +300,12 @@ const CreateStandaloneRutina = () => {
 
           <div className="flex space-x-4">
             <button
-              type="submit"
-              disabled={!rutinaData.nombre || isCreatingRutina}
+              type="button"
+              onClick={handleSubmit}
+              disabled={!rutinaData.nombre}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50"
             >
-              {rutinaId ? 'Finalizar' : isCreatingRutina ? 'Creando...' : 'Crear Rutina'}
+              Crear Rutina
             </button>
             <button
               type="button"
@@ -346,7 +315,7 @@ const CreateStandaloneRutina = () => {
               Cancelar
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </Layout>
   );

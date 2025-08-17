@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ejerciciosBaseAPI } from '../utils/api';
 
-const EjercicioSelector = ({ onSelect, value }) => {
+const EjercicioSelector = React.forwardRef(({ onSelect, value }, ref) => {
   const [ejercicios, setEjercicios] = useState([]);
   const [filteredEjercicios, setFilteredEjercicios] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,8 +41,18 @@ const EjercicioSelector = ({ onSelect, value }) => {
     onSelect(ejercicio);
   };
 
+  const clearSelection = () => {
+    setSearchTerm('');
+    setShowSuggestions(false);
+  };
+
+  React.useImperativeHandle(ref, () => ({
+    clearSelection
+  }));
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && searchTerm && filteredEjercicios.length === 0) {
+      e.preventDefault();
       setNewEjercicio({ ...newEjercicio, nombre: searchTerm });
       setShowCreateModal(true);
     }
@@ -118,7 +128,8 @@ const EjercicioSelector = ({ onSelect, value }) => {
             </select>
             <div className="flex space-x-2">
               <button
-                onClick={createEjercicio}
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); createEjercicio(); }}
                 disabled={!newEjercicio.nombre || !newEjercicio.categoria}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg disabled:opacity-50"
               >
@@ -136,6 +147,6 @@ const EjercicioSelector = ({ onSelect, value }) => {
       )}
     </div>
   );
-};
+});
 
 export default EjercicioSelector;

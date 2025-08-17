@@ -14,29 +14,20 @@ const AllDietas = () => {
 
   const fetchData = async () => {
     try {
-      const [alumnosResponse] = await Promise.all([
+      const [dietasResponse, alumnosResponse] = await Promise.all([
+        dietasAPI.getAll(),
         alumnosAPI.getAll()
       ]);
       
       setAlumnos(alumnosResponse.data);
       
-      // Get dietas for all alumnos
-      const allDietas = [];
-      for (const alumno of alumnosResponse.data) {
-        try {
-          const dietasResponse = await dietasAPI.getByAlumno(alumno.id);
-          dietasResponse.data.forEach(dieta => {
-            allDietas.push({
-              ...dieta,
-              alumno_nombre: alumno.nombre
-            });
-          });
-        } catch (error) {
-          console.error(`Error fetching dietas for alumno ${alumno.id}:`, error);
-        }
-      }
+      // Map dietas with alumno names
+      const dietasWithAlumnoNames = dietasResponse.data.map(dieta => ({
+        ...dieta,
+        alumno_nombre: dieta.alumno ? dieta.alumno.nombre : 'Sin asignar'
+      }));
       
-      setDietas(allDietas.sort((a, b) => new Date(b.fecha_inicio || 0) - new Date(a.fecha_inicio || 0)));
+      setDietas(dietasWithAlumnoNames.sort((a, b) => new Date(b.fecha_inicio || 0) - new Date(a.fecha_inicio || 0)));
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
