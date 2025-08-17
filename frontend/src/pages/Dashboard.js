@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAllAlumnos, setShowAllAlumnos] = useState(false);
 
   const fetchDashboard = async () => {
     try {
@@ -82,7 +83,7 @@ const Dashboard = () => {
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4">Últimos Alumnos Añadidos</h2>
             <div className="space-y-3">
-              {dashboardData.ultimos_alumnos.slice(0, 4).map((alumno) => (
+              {(showAllAlumnos ? dashboardData.ultimos_alumnos : dashboardData.ultimos_alumnos.slice(0, 4)).map((alumno) => (
                 <Link key={alumno.id} to={`/alumnos/${alumno.id}`} className="flex justify-between items-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
                   <div>
                     <p className="font-medium">{alumno.nombre}</p>
@@ -94,9 +95,12 @@ const Dashboard = () => {
                 </Link>
               ))}
               {dashboardData.ultimos_alumnos.length > 4 && (
-                <Link to="/alumnos" className="block text-center text-blue-600 hover:text-blue-800 text-sm py-2">
-                  Ver más ({dashboardData.ultimos_alumnos.length - 4} más)
-                </Link>
+                <button 
+                  onClick={() => setShowAllAlumnos(!showAllAlumnos)}
+                  className="block w-full text-center text-blue-600 hover:text-blue-800 text-sm py-2"
+                >
+                  {showAllAlumnos ? 'Ver menos' : `Ver más (${dashboardData.ultimos_alumnos.length - 4} más)`}
+                </button>
               )}
             </div>
           </div>

@@ -85,10 +85,16 @@ const PRChart = ({ alumnoId }) => {
             <YAxis yAxisId="left" />
             <YAxis yAxisId="right" orientation="right" />
             <Tooltip 
-              formatter={(value, name) => [
-                name === 'peso' ? `${value}kg` : `${value} reps`, 
-                name === 'peso' ? 'Peso' : 'Repeticiones'
-              ]}
+              labelFormatter={(label) => `Fecha: ${label}`}
+              formatter={(value, name) => {
+                if (name === 'Kgs') {
+                  return [`${value}kg`, 'Kgs'];
+                }
+                if (name === 'Repeticiones') {
+                  return [`${value} reps`, 'Repeticiones'];
+                }
+                return [value, name];
+              }}
             />
             <Legend />
             <Line 
