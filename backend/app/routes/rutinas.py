@@ -256,41 +256,57 @@ def delete_peso(peso_id: int, coach: Coach = Depends(get_current_coach), db: Ses
 
 @router.get("/{rutina_id}/pdf")
 def download_rutina_pdf(rutina_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    rutina = db.query(Rutina).join(Alumno).filter(
+    from sqlalchemy.orm import joinedload
+    
+    rutina = db.query(Rutina).options(
+        joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base),
+        joinedload(Rutina.alumno)
+    ).outerjoin(Alumno).filter(
         Rutina.id == rutina_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Rutina.alumno_id.is_(None)),
         Rutina.eliminado == False
     ).first()
     
     if not rutina:
         raise HTTPException(status_code=404, detail="Rutina not found")
     
-    pdf_content = generate_rutina_pdf(rutina)
-    
-    return Response(
-        content=pdf_content,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=rutina_{rutina.nombre}.pdf"}
-    )
+    try:
+        pdf_content = generate_rutina_pdf(rutina)
+        
+        return Response(
+            content=pdf_content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=rutina_{rutina.nombre}.pdf"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
 
 @router.get("/{rutina_id}/excel")
 def download_rutina_excel(rutina_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    rutina = db.query(Rutina).join(Alumno).filter(
+    from sqlalchemy.orm import joinedload
+    
+    rutina = db.query(Rutina).options(
+        joinedload(Rutina.ejercicios).joinedload(Ejercicio.ejercicio_base),
+        joinedload(Rutina.alumno)
+    ).outerjoin(Alumno).filter(
         Rutina.id == rutina_id,
-        Alumno.coach_id == coach.id,
+        (Alumno.coach_id == coach.id) | (Rutina.alumno_id.is_(None)),
         Rutina.eliminado == False
     ).first()
     
     if not rutina:
         raise HTTPException(status_code=404, detail="Rutina not found")
     
-    excel_content = generate_rutina_excel(rutina)
-    
-    return Response(
-        content=excel_content,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename=rutina_{rutina.nombre}.xlsx"}
-    )
+    try:
+        excel_content = generate_rutina_excel(rutina)
+        
+        return Response(
+            content=excel_content,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename=rutina_{rutina.nombre}.xlsx"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating Excel: {str(e)}")
 
 @router.post("/{rutina_id}/copy/{target_alumno_id}")
 def copy_rutina(rutina_id: int, target_alumno_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):

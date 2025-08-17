@@ -19,7 +19,7 @@ def generate_rutina_excel(rutina: Rutina):
     ws['A1'] = "Rutina:"
     ws['B1'] = rutina.nombre
     ws['A2'] = "Alumno:"
-    ws['B2'] = rutina.alumno.nombre
+    ws['B2'] = rutina.alumno.nombre if rutina.alumno else 'Sin asignar'
     ws['A3'] = "Fecha de inicio:"
     ws['B3'] = rutina.fecha_inicio.strftime('%d/%m/%Y') if rutina.fecha_inicio else 'No especificada'
     ws['A4'] = "Entrenamientos/semana:"

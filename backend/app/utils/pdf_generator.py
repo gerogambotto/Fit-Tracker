@@ -1,66 +1,60 @@
-import pdfkit
 from io import BytesIO
 from app.models.models import Rutina
 
 def generate_rutina_pdf(rutina: Rutina):
-    html_content = f"""
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 20px; }}
-            h1 {{ color: #333; }}
-            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
-            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-            th {{ background-color: #f2f2f2; }}
-        </style>
-    </head>
-    <body>
-        <h1>Rutina: {rutina.nombre}</h1>
-        <p><strong>Alumno:</strong> {rutina.alumno.nombre}</p>
-        <p><strong>Fecha de inicio:</strong> {rutina.fecha_inicio.strftime('%d/%m/%Y') if rutina.fecha_inicio else 'No especificada'}</p>
-        <p><strong>Entrenamientos por semana:</strong> {rutina.entrenamientos_semana}</p>
-        <p><strong>Notas:</strong> {rutina.notas or 'Sin notas'}</p>
-        
-        <h2>Ejercicios</h2>
-        <table>
-            <tr>
-                <th>Ejercicio</th>
-                <th>Series</th>
-                <th>Repeticiones</th>
-                <th>Peso (kg)</th>
-                <th>Descanso (seg)</th>
-                <th>Notas</th>
-            </tr>
-    """
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from io import BytesIO
     
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
+    
+    y = 750
+    p.drawString(100, y, f"Rutina: {rutina.nombre}")
+    y -= 30
+    p.drawString(100, y, f"Alumno: {rutina.alumno.nombre if rutina.alumno else 'Sin asignar'}")
+    y -= 20
+    p.drawString(100, y, f"Entrenamientos/semana: {rutina.entrenamientos_semana}")
+    y -= 40
+    
+    # Organizar ejercicios por día
+    dias_ejercicios = {}
     for ejercicio in rutina.ejercicios:
-        html_content += f"""
-            <tr>
-                <td>{ejercicio.ejercicio_base.nombre}</td>
-                <td>{ejercicio.series}</td>
-                <td>{ejercicio.repeticiones}</td>
-                <td>{ejercicio.peso or '-'}</td>
-                <td>{ejercicio.descanso}</td>
-                <td>{ejercicio.notas or '-'}</td>
-            </tr>
-        """
+        dia = ejercicio.dia
+        if dia not in dias_ejercicios:
+            dias_ejercicios[dia] = []
+        dias_ejercicios[dia].append(ejercicio)
     
-    html_content += """
-        </table>
-    </body>
-    </html>
-    """
+    # Mostrar ejercicios por día
+    for dia in sorted(dias_ejercicios.keys()):
+        if y < 150:
+            p.showPage()
+            y = 750
+        
+        p.drawString(100, y, f"Día {dia}")
+        y -= 20
+        
+        for ejercicio in dias_ejercicios[dia]:
+            if y < 100:
+                p.showPage()
+                y = 750
+            
+            peso_text = f" × {ejercicio.peso}kg" if ejercicio.peso else ""
+            p.drawString(120, y, f"{ejercicio.ejercicio_base.nombre}")
+            y -= 15
+            p.drawString(140, y, f"{ejercicio.series} series × {ejercicio.repeticiones} reps{peso_text} - Descanso: {ejercicio.descanso}s")
+            y -= 15
+            
+            if ejercicio.notas:
+                p.drawString(140, y, f"{ejercicio.notas}")
+                y -= 15
+            
+            y -= 5  # Espacio entre ejercicios
+        
+        y -= 15  # Espacio entre días
     
-    options = {
-        'page-size': 'A4',
-        'margin-top': '0.75in',
-        'margin-right': '0.75in',
-        'margin-bottom': '0.75in',
-        'margin-left': '0.75in',
-        'encoding': "UTF-8",
-        'no-outline': None
-    }
-    
-    pdf = pdfkit.from_string(html_content, False, options=options)
-    return pdf
+    p.save()
+    buffer.seek(0)
+    return buffer.getvalue()

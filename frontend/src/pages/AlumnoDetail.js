@@ -4,6 +4,7 @@ import { alumnosAPI, rutinasAPI, dietasAPI } from '../utils/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Layout from '../components/Layout';
 import PRChart from '../components/PRChart';
+import SuccessModal from '../components/SuccessModal';
 
 const AlumnoDetail = () => {
   const { id } = useParams();
@@ -23,6 +24,8 @@ const AlumnoDetail = () => {
   const [showPRForm, setShowPRForm] = useState(false);
   const [prForm, setPrForm] = useState({ ejercicio: '', peso: '', repeticiones: 1 });
   const [showAllPRs, setShowAllPRs] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
 
   useEffect(() => {
     fetchData();
@@ -159,7 +162,11 @@ const AlumnoDetail = () => {
   const saveAsTemplate = async (rutinaId) => {
     try {
       await rutinasAPI.saveAsTemplate(rutinaId);
-      alert('Rutina guardada como plantilla');
+      setSuccessMessage({
+        title: '¡Plantilla Guardada!',
+        message: 'La rutina se ha guardado exitosamente como plantilla y estará disponible para crear nuevas rutinas.'
+      });
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Error saving template:', error);
       alert('Error al guardar plantilla');
@@ -198,7 +205,11 @@ const AlumnoDetail = () => {
   const saveDietaAsTemplate = async (dietaId) => {
     try {
       await dietasAPI.saveAsTemplate(dietaId);
-      alert('Dieta guardada como plantilla');
+      setSuccessMessage({
+        title: '¡Plantilla Guardada!',
+        message: 'La dieta se ha guardado exitosamente como plantilla y estará disponible para crear nuevas dietas.'
+      });
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Error saving template:', error);
       alert('Error al guardar plantilla');
@@ -707,6 +718,13 @@ const AlumnoDetail = () => {
             </div>
           </div>
         )}
+
+        <SuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+          title={successMessage.title}
+          message={successMessage.message}
+        />
       </div>
     </Layout>
   );
