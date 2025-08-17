@@ -116,7 +116,7 @@ const CreateStandaloneDieta = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const alumnoId = dietaData.alumno_id || null;
+      const alumnoId = dietaData.alumno_id || 'none';
       
       const dietaResponse = await dietasAPI.create(alumnoId, {
         nombre: dietaData.nombre,
@@ -130,12 +130,12 @@ const CreateStandaloneDieta = () => {
           const comidaResponse = await dietasAPI.addComida(dietaResponse.data.id, {
             nombre: comida.nombre,
             dia: parseInt(menu),
-            orden: comida.orden
+            orden: 1
           });
 
           // Add foods to meal
           for (const alimento of comida.alimentos) {
-            await dietasAPI.addAlimento(comidaResponse.data.id, {
+            await dietasAPI.addAlimentoToComida(comidaResponse.data.id, {
               alimento_id: alimento.alimento_id,
               cantidad_gramos: alimento.cantidad_gramos
             });
@@ -224,7 +224,7 @@ const CreateStandaloneDieta = () => {
 
             <div className="border-t pt-4">
               <h3 className="font-medium mb-3">Agregar comida al Menú {diaActual}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Nombre de la comida:</label>
                   <input
@@ -235,16 +235,7 @@ const CreateStandaloneDieta = () => {
                     onChange={(e) => setComidaForm({ ...comidaForm, nombre: e.target.value })}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Orden de la comida:</label>
-                  <input
-                    type="number"
-                    placeholder="1"
-                    className="border border-gray-300 rounded-lg px-3 py-2 w-full"
-                    value={comidaForm.orden}
-                    onChange={(e) => setComidaForm({ ...comidaForm, orden: parseInt(e.target.value) })}
-                  />
-                </div>
+
                 <button
                   type="button"
                   onClick={addComida}

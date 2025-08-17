@@ -16,9 +16,10 @@ const SelectDietaType = () => {
   const fetchPlantillas = async () => {
     try {
       const response = await dietasAPI.getPlantillas();
-      setPlantillas(response.data);
+      setPlantillas(response.data || []);
     } catch (error) {
       console.error('Error fetching plantillas:', error);
+      setPlantillas([]);
     } finally {
       setLoading(false);
     }

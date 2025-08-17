@@ -110,16 +110,16 @@ export const ejerciciosBaseAPI = {
 export const dietasAPI = {
   getAll: () => api.get('/dietas'),
   getByAlumno: (alumnoId) => api.get(`/alumnos/${alumnoId}/dietas`),
-  create: (alumnoId, data) => api.post(`/alumnos/${alumnoId || 'none'}/dietas`, data),
+  create: (alumnoId, data) => api.post(`/dietas/create/${alumnoId || 'none'}`, data),
   getById: (id) => api.get(`/dietas/${id}`),
   update: (id, data) => api.patch(`/dietas/${id}`, data),
   delete: (id) => api.delete(`/dietas/${id}`),
   copy: (dietaId, targetAlumnoId) => api.post(`/dietas/${dietaId}/copy/${targetAlumnoId}`),
   addComida: (id, data) => api.post(`/dietas/${id}/comidas`, data),
-  addAlimentoToComida: (comidaId, data) => api.post(`/comidas/${comidaId}/alimentos`, data),
-  deleteComidaAlimento: (id) => api.delete(`/comida-alimentos/${id}`),
-  updateComida: (comidaId, data) => api.patch(`/comidas/${comidaId}`, data),
-  deleteComida: (comidaId) => api.delete(`/comidas/${comidaId}`),
+  addAlimentoToComida: (comidaId, data) => api.post(`/dietas/comidas/${comidaId}/alimentos`, data),
+  deleteComidaAlimento: (id) => api.delete(`/dietas/comida-alimentos/${id}`),
+  updateComida: (comidaId, data) => api.patch(`/dietas/comidas/${comidaId}`, data),
+  deleteComida: (comidaId) => api.delete(`/dietas/comidas/${comidaId}`),
   copyDay: (dietaId, sourceDay, targetDay) => api.post(`/dietas/${dietaId}/copy-day`, { source_day: sourceDay, target_day: targetDay }),
   saveAsTemplate: (dietaId) => api.post(`/dietas/${dietaId}/save-as-template`),
   getPlantillas: () => api.get('/dietas/plantillas'),
@@ -128,9 +128,9 @@ export const dietasAPI = {
 
 // Alimentos endpoints
 export const alimentosAPI = {
-  getAll: () => api.get('/alimentos'),
-  search: (query) => api.get(`/alimentos/search/${query}`),
-  create: (data) => api.post('/alimentos', data),
+  getAll: () => api.get('/dietas/alimentos'),
+  search: (query) => api.get(`/dietas/alimentos/search/${query}`),
+  create: (data) => api.post('/dietas/alimentos', data),
 };
 
 export default api;

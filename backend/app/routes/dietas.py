@@ -40,7 +40,7 @@ class ComidaAlimentoCreate(BaseModel):
     alimento_id: int
     cantidad_gramos: float
 
-@router.post("/alumnos/{alumno_id}/dietas")
+@router.post("/create/{alumno_id}")
 def create_dieta(alumno_id: str, dieta_data: DietaCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     # Handle standalone diets (alumno_id can be 'none')
     if alumno_id != 'none':
@@ -176,6 +176,13 @@ def copy_dieta(dieta_id: int, target_alumno_id: int, coach: Coach = Depends(get_
     db.commit()
     return nueva_dieta
 
+@router.get("/plantillas")
+def get_dietas_plantillas(coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    plantillas = db.query(DietaPlantilla).options(
+        joinedload(DietaPlantilla.comidas).joinedload(ComidaPlantilla.alimentos).joinedload(ComidaPlantillaAlimento.alimento)
+    ).filter(DietaPlantilla.coach_id == coach.id).all()
+    return plantillas
+
 @router.get("/{dieta_id}")
 def get_dieta(dieta_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
     dieta = db.query(Dieta).options(
@@ -217,9 +224,9 @@ def add_comida(dieta_id: int, comida_data: ComidaCreate, coach: Coach = Depends(
 
 @router.post("/comidas/{comida_id}/alimentos")
 def add_alimento_to_comida(comida_id: int, alimento_data: ComidaAlimentoCreate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    comida = db.query(Comida).join(Dieta).join(Alumno).filter(
+    comida = db.query(Comida).join(Dieta).outerjoin(Alumno).filter(
         Comida.id == comida_id,
-        Alumno.coach_id == coach.id
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None))
     ).first()
     
     if not comida:
@@ -247,9 +254,9 @@ def add_alimento_to_comida(comida_id: int, alimento_data: ComidaAlimentoCreate, 
 
 @router.delete("/comida-alimentos/{comida_alimento_id}")
 def delete_comida_alimento(comida_alimento_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    comida_alimento = db.query(ComidaAlimento).join(Comida).join(Dieta).join(Alumno).filter(
+    comida_alimento = db.query(ComidaAlimento).join(Comida).join(Dieta).outerjoin(Alumno).filter(
         ComidaAlimento.id == comida_alimento_id,
-        Alumno.coach_id == coach.id
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None))
     ).first()
     
     if not comida_alimento:
@@ -265,9 +272,9 @@ def delete_comida_alimento(comida_alimento_id: int, coach: Coach = Depends(get_c
 
 @router.patch("/comidas/{comida_id}")
 def update_comida(comida_id: int, comida_data: ComidaUpdate, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    comida = db.query(Comida).join(Dieta).join(Alumno).filter(
+    comida = db.query(Comida).join(Dieta).outerjoin(Alumno).filter(
         Comida.id == comida_id,
-        Alumno.coach_id == coach.id
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None))
     ).first()
     
     if not comida:
@@ -286,9 +293,9 @@ def update_comida(comida_id: int, comida_data: ComidaUpdate, coach: Coach = Depe
 
 @router.delete("/comidas/{comida_id}")
 def delete_comida(comida_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    comida = db.query(Comida).join(Dieta).join(Alumno).filter(
+    comida = db.query(Comida).join(Dieta).outerjoin(Alumno).filter(
         Comida.id == comida_id,
-        Alumno.coach_id == coach.id
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None))
     ).first()
     
     if not comida:
@@ -297,13 +304,6 @@ def delete_comida(comida_id: int, coach: Coach = Depends(get_current_coach), db:
     db.delete(comida)
     db.commit()
     return {"message": "Comida deleted successfully"}
-
-@router.get("/plantillas")
-def get_dietas_plantillas(coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
-    plantillas = db.query(DietaPlantilla).options(
-        joinedload(DietaPlantilla.comidas).joinedload(ComidaPlantilla.alimentos).joinedload(ComidaPlantillaAlimento.alimento)
-    ).filter(DietaPlantilla.coach_id == coach.id).all()
-    return plantillas
 
 @router.post("/{dieta_id}/save-as-template")
 def save_dieta_as_template(dieta_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):

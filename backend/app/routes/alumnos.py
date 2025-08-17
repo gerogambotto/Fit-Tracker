@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_db
-from app.models.models import Coach, Alumno, PesoAlumno, PersonalRecord, Dieta, Rutina, Ejercicio
+from app.models.models import Coach, Alumno, PesoAlumno, PersonalRecord, Dieta, Rutina, Ejercicio, Comida, ComidaAlimento
 from app.middleware.auth import get_current_coach
 
 router = APIRouter(prefix="/alumnos", tags=["alumnos"])
@@ -244,7 +244,7 @@ def get_dietas(alumno_id: int, coach: Coach = Depends(get_current_coach), db: Se
         raise HTTPException(status_code=404, detail="Alumno not found")
     
     dietas = db.query(Dieta).options(
-        joinedload(Dieta.comidas)
+        joinedload(Dieta.comidas).joinedload(Comida.alimentos).joinedload(ComidaAlimento.alimento)
     ).filter(
         Dieta.alumno_id == alumno_id,
         Dieta.eliminado == False

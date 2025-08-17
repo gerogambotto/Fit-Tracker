@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 from app.database import engine
 from app.models.models import Base
 from app.routes import auth, alumnos, rutinas, dashboard, ejercicios_base, dietas
@@ -8,16 +9,18 @@ from app.routes import auth, alumnos, rutinas, dashboard, ejercicios_base, dieta
 # Crear tablas
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="FitTracker API", version="1.0.0")
-
-# Ejecutar recordatorios al iniciar
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
     from app.tasks.payment_reminders import check_payment_reminders
     try:
         check_payment_reminders()
     except Exception as e:
         print(f"Error ejecutando recordatorios: {e}")
+    yield
+    # Shutdown (if needed)
+
+app = FastAPI(title="FitTracker API", version="1.0.0", lifespan=lifespan)
 
 # Configurar CORS
 app.add_middleware(
@@ -50,5 +53,5 @@ def health_check():
     }
 
 if __name__ == "__main__":
-    from uvicorn import run
-    run(app, host="0.0.0.0", port=8000)
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

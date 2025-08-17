@@ -35,6 +35,38 @@ const AllDietas = () => {
     }
   };
 
+  const handleSaveAsTemplate = async (dietaId) => {
+    try {
+      await dietasAPI.saveAsTemplate(dietaId);
+      alert('Dieta guardada como plantilla');
+    } catch (error) {
+      console.error('Error saving template:', error);
+    }
+  };
+
+  const handleCopyDieta = (dietaId) => {
+    const targetAlumnoId = prompt('ID del alumno destino:');
+    if (targetAlumnoId) {
+      dietasAPI.copy(dietaId, parseInt(targetAlumnoId))
+        .then(() => {
+          alert('Dieta copiada exitosamente');
+          fetchData();
+        })
+        .catch(error => console.error('Error copying dieta:', error));
+    }
+  };
+
+  const handleDeleteDieta = async (dietaId) => {
+    if (window.confirm('¿Estás seguro de eliminar esta dieta?')) {
+      try {
+        await dietasAPI.delete(dietaId);
+        fetchData();
+      } catch (error) {
+        console.error('Error deleting dieta:', error);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -81,7 +113,7 @@ const AllDietas = () => {
                     Comidas: {dieta.comidas?.length || 0}
                   </p>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex flex-wrap gap-2">
                   <Link
                     to={`/dietas/${dieta.id}/view`}
                     className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"
@@ -94,6 +126,26 @@ const AllDietas = () => {
                   >
                     Editar
                   </Link>
+                  <button
+                    onClick={() => handleSaveAsTemplate(dieta.id)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                  >
+                    Guardar
+                  </button>
+                  {dieta.alumno_id && (
+                    <button
+                      onClick={() => handleCopyDieta(dieta.id)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                    >
+                      Copiar
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDeleteDieta(dieta.id)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                  >
+                    Eliminar
+                  </button>
                 </div>
               </div>
             </div>
