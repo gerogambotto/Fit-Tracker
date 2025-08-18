@@ -124,6 +124,8 @@ export const dietasAPI = {
   saveAsTemplate: (dietaId) => api.post(`/dietas/${dietaId}/save-as-template`),
   getPlantillas: () => api.get('/dietas/plantillas'),
   createFromTemplate: (plantillaId, alumnoId) => api.post(`/dietas/plantillas/${plantillaId}/create-dieta/${alumnoId}`),
+  downloadPDF: (id) => api.get(`/dietas/${id}/pdf`, { responseType: 'blob' }),
+  downloadExcel: (id) => api.get(`/dietas/${id}/excel`, { responseType: 'blob' }),
 };
 
 // Alimentos endpoints

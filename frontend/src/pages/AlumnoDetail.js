@@ -216,6 +216,36 @@ const AlumnoDetail = () => {
     }
   };
 
+  const downloadDietaPDF = async (dietaId) => {
+    try {
+      const response = await dietasAPI.downloadPDF(dietaId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `dieta_${dietaId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+    }
+  };
+
+  const downloadDietaExcel = async (dietaId) => {
+    try {
+      const response = await dietasAPI.downloadExcel(dietaId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `dieta_${dietaId}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error downloading Excel:', error);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -487,6 +517,16 @@ const AlumnoDetail = () => {
                       Excel
                     </button>
                     <button
+                      onClick={() => toggleRutinaStatus(rutina.id, rutina.activa)}
+                      className={`px-2 py-1 rounded text-xs ${
+                        rutina.activa 
+                          ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                          : 'bg-green-600 hover:bg-green-700 text-white'
+                      }`}
+                    >
+                      {rutina.activa ? 'Desactivar' : 'Activar'}
+                    </button>
+                    <button
                       onClick={() => saveAsTemplate(rutina.id)}
                       className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs inline-flex items-center"
                     >
@@ -659,6 +699,18 @@ const AlumnoDetail = () => {
                     >
                       Editar
                     </Link>
+                    <button
+                      onClick={() => downloadDietaPDF(dieta.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+                    >
+                      PDF
+                    </button>
+                    <button
+                      onClick={() => downloadDietaExcel(dieta.id)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
+                    >
+                      Excel
+                    </button>
                     <button
                       onClick={() => saveDietaAsTemplate(dieta.id)}
                       className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs inline-flex items-center"

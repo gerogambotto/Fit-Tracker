@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { rutinasAPI } from '../utils/api';
 import Layout from '../components/Layout';
 import CopyDayModal from '../components/CopyDayModal';
+import SuccessModal from '../components/SuccessModal';
 
 const ViewRutina = () => {
   const { rutinaId } = useParams();
@@ -10,6 +11,8 @@ const ViewRutina = () => {
   const [rutina, setRutina] = useState(null);
   const [diasEntrenamiento, setDiasEntrenamiento] = useState({});
   const [showCopyModal, setShowCopyModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
 
   useEffect(() => {
     fetchRutina();
@@ -43,6 +46,49 @@ const ViewRutina = () => {
     }
   };
 
+  const downloadPDF = async () => {
+    try {
+      const response = await rutinasAPI.downloadPDF(rutinaId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `rutina_${rutina.nombre}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+    }
+  };
+
+  const downloadExcel = async () => {
+    try {
+      const response = await rutinasAPI.downloadExcel(rutinaId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `rutina_${rutina.nombre}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error downloading Excel:', error);
+    }
+  };
+
+  const saveAsTemplate = async () => {
+    try {
+      await rutinasAPI.saveAsTemplate(rutinaId);
+      setSuccessMessage({
+        title: '¡Plantilla Guardada!',
+        message: 'La rutina se ha guardado exitosamente como plantilla y estará disponible para crear nuevas rutinas.'
+      });
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Error saving template:', error);
+    }
+  };
+
   if (!rutina) {
     return (
       <Layout>
@@ -58,16 +104,40 @@ const ViewRutina = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Rutina: {rutina.nombre}</h1>
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => navigate(`/rutinas/${rutinaId}/edit`)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
+            >
+              Editar
+            </button>
             <button
               onClick={() => setShowCopyModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm"
             >
               Copiar Día
             </button>
             <button
+              onClick={downloadPDF}
+              className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm"
+            >
+              PDF
+            </button>
+            <button
+              onClick={downloadExcel}
+              className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm"
+            >
+              Excel
+            </button>
+            <button
+              onClick={saveAsTemplate}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg text-sm"
+            >
+              Plantilla
+            </button>
+            <button
               onClick={() => navigate(-1)}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm"
             >
               Volver
             </button>
@@ -149,6 +219,13 @@ const ViewRutina = () => {
           onClose={() => setShowCopyModal(false)}
           rutinaId={rutinaId}
           onSuccess={fetchRutina}
+        />
+        
+        <SuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+          title={successMessage.title}
+          message={successMessage.message}
         />
       </div>
     </Layout>

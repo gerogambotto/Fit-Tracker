@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from typing import List, Optional
@@ -7,6 +7,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_db
 from app.models.models import Coach, Alumno, Dieta, Comida, ComidaAlimento, Alimento, DietaPlantilla, ComidaPlantilla, ComidaPlantillaAlimento
 from app.middleware.auth import get_current_coach
+from app.utils.dieta_pdf_generator import generate_dieta_pdf
+from app.utils.dieta_excel_generator import generate_dieta_excel
 
 router = APIRouter(prefix="/dietas", tags=["dietas"])
 
@@ -507,6 +509,60 @@ def search_alimentos(query: str, db: Session = Depends(get_db)):
         Alimento.nombre.ilike(f"%{query}%")
     ).limit(20).all()
     return alimentos
+
+@router.get("/{dieta_id}/pdf")
+def download_dieta_pdf(dieta_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
+    dieta = db.query(Dieta).options(
+        joinedload(Dieta.comidas).joinedload(Comida.alimentos).joinedload(ComidaAlimento.alimento),
+        joinedload(Dieta.alumno)
+    ).outerjoin(Alumno).filter(
+        Dieta.id == dieta_id,
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None)),
+        Dieta.eliminado == False
+    ).first()
+    
+    if not dieta:
+        raise HTTPException(status_code=404, detail="Dieta not found")
+    
+    try:
+        pdf_content = generate_dieta_pdf(dieta)
+        
+        return Response(
+            content=pdf_content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=dieta_{dieta.nombre}.pdf"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
+@router.get("/{dieta_id}/excel")
+def download_dieta_excel(dieta_id: int, coach: Coach = Depends(get_current_coach), db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    
+    dieta = db.query(Dieta).options(
+        joinedload(Dieta.comidas).joinedload(Comida.alimentos).joinedload(ComidaAlimento.alimento),
+        joinedload(Dieta.alumno)
+    ).outerjoin(Alumno).filter(
+        Dieta.id == dieta_id,
+        (Alumno.coach_id == coach.id) | (Dieta.alumno_id.is_(None)),
+        Dieta.eliminado == False
+    ).first()
+    
+    if not dieta:
+        raise HTTPException(status_code=404, detail="Dieta not found")
+    
+    try:
+        excel_content = generate_dieta_excel(dieta)
+        
+        return Response(
+            content=excel_content,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename=dieta_{dieta.nombre}.xlsx"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating Excel: {str(e)}")
 
 class AlimentoCreate(BaseModel):
     nombre: str

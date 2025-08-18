@@ -33,10 +33,10 @@ def generate_rutina_excel(rutina: Rutina):
         dias_ejercicios[i] = []
     
     for ejercicio in rutina.ejercicios:
-        dia_match = re.search(r'Día (\d+):', ejercicio.notas or '')
-        dia = int(dia_match.group(1)) if dia_match else 1
-        if dia in dias_ejercicios:
-            dias_ejercicios[dia].append(ejercicio)
+        dia = ejercicio.dia if ejercicio.dia else 1
+        if dia not in dias_ejercicios:
+            dias_ejercicios[dia] = []
+        dias_ejercicios[dia].append(ejercicio)
     
     row = 7
     
@@ -71,8 +71,7 @@ def generate_rutina_excel(rutina: Rutina):
                 ws[f'C{row}'] = ejercicio.repeticiones
                 ws[f'D{row}'] = ejercicio.peso or '-'
                 ws[f'E{row}'] = ejercicio.descanso
-                notas_limpias = re.sub(r'Día \d+:\s*', '', ejercicio.notas or '')
-                ws[f'F{row}'] = notas_limpias or '-'
+                ws[f'F{row}'] = ejercicio.notas or '-'
                 row += 1
             
             row += 1  # Espacio entre días
