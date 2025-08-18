@@ -135,6 +135,14 @@ def update_rutina(rutina_id: int, rutina_data: RutinaUpdate, coach: Coach = Depe
     if not rutina:
         raise HTTPException(status_code=404, detail="Rutina not found")
     
+    # Si se está activando una rutina y tiene alumno asignado, desactivar otras
+    if rutina_data.activa and rutina.alumno_id:
+        db.query(Rutina).filter(
+            Rutina.alumno_id == rutina.alumno_id,
+            Rutina.id != rutina_id,
+            Rutina.eliminado == False
+        ).update({"activa": False})
+    
     for field, value in rutina_data.dict(exclude_unset=True).items():
         setattr(rutina, field, value)
     

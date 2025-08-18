@@ -216,6 +216,15 @@ const AlumnoDetail = () => {
     }
   };
 
+  const toggleRutinaStatus = async (rutinaId, isActive) => {
+    try {
+      await rutinasAPI.update(rutinaId, { activa: !isActive });
+      fetchData();
+    } catch (error) {
+      console.error('Error updating rutina status:', error);
+    }
+  };
+
   const downloadDietaPDF = async (dietaId) => {
     try {
       const response = await dietasAPI.downloadPDF(dietaId);
@@ -546,6 +555,91 @@ const AlumnoDetail = () => {
           </div>
         </div>
 
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Dietas</h2>
+            <Link
+              to={`/alumnos/${id}/select-dieta-type`}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
+            >
+              Nueva Dieta
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {dashboardData?.dietas?.length > 0 ? (
+              dashboardData.dietas.map((dieta) => (
+                <div key={dieta.id} className={`p-4 border rounded ${
+                  dieta.activa ? 'border-purple-300 bg-purple-50' : 'border-gray-200'
+                }`}>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-semibold">{dieta.nombre}</h3>
+                        {dieta.activa && (
+                          <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                            Activa
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Fecha: {dieta.fecha_inicio ? new Date(dieta.fecha_inicio).toLocaleDateString() : 'No especificada'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Comidas: {dieta.comidas?.length || 0}
+                      </p>
+                      {dieta.notas && (
+                        <p className="text-sm text-gray-600 mt-1">{dieta.notas}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link
+                      to={`/dietas/${dieta.id}/view`}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded text-xs inline-flex items-center"
+                    >
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Ver
+                    </Link>
+                    <Link
+                      to={`/dietas/${dieta.id}/edit`}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+                    >
+                      Editar
+                    </Link>
+                    <button
+                      onClick={() => downloadDietaPDF(dieta.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+                    >
+                      PDF
+                    </button>
+                    <button
+                      onClick={() => downloadDietaExcel(dieta.id)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
+                    >
+                      Excel
+                    </button>
+                    <button
+                      onClick={() => saveDietaAsTemplate(dieta.id)}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs inline-flex items-center"
+                    >
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                      Plantilla
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-8">No hay dietas asignadas</p>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white p-6 rounded-lg shadow">
             <PRChart alumnoId={id} />
@@ -642,91 +736,6 @@ const AlumnoDetail = () => {
             )}
           </div>
         </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Dietas</h2>
-            <Link
-              to={`/alumnos/${id}/select-dieta-type`}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
-            >
-              Nueva Dieta
-            </Link>
-          </div>
-
-          <div className="space-y-3">
-            {dashboardData?.dietas?.length > 0 ? (
-              dashboardData.dietas.map((dieta) => (
-                <div key={dieta.id} className={`p-4 border rounded ${
-                  dieta.activa ? 'border-purple-300 bg-purple-50' : 'border-gray-200'
-                }`}>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <h3 className="font-semibold">{dieta.nombre}</h3>
-                        {dieta.activa && (
-                          <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                            Activa
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Fecha: {dieta.fecha_inicio ? new Date(dieta.fecha_inicio).toLocaleDateString() : 'No especificada'}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Comidas: {dieta.comidas?.length || 0}
-                      </p>
-                      {dieta.notas && (
-                        <p className="text-sm text-gray-600 mt-1">{dieta.notas}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Link
-                      to={`/dietas/${dieta.id}/view`}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded text-xs inline-flex items-center"
-                    >
-                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      Ver
-                    </Link>
-                    <Link
-                      to={`/dietas/${dieta.id}/edit`}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
-                    >
-                      Editar
-                    </Link>
-                    <button
-                      onClick={() => downloadDietaPDF(dieta.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
-                    >
-                      PDF
-                    </button>
-                    <button
-                      onClick={() => downloadDietaExcel(dieta.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
-                    >
-                      Excel
-                    </button>
-                    <button
-                      onClick={() => saveDietaAsTemplate(dieta.id)}
-                      className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs inline-flex items-center"
-                    >
-                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                      </svg>
-                      Plantilla
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-8">No hay dietas asignadas</p>
-            )}
-          </div>
         </div>
        
 
