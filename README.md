@@ -9,8 +9,10 @@ Una aplicación web Full Stack para que coaches gestionen a sus alumnos, asignen
 - 💪 **Rutinas personalizadas** con ejercicios y plantillas
 - 🍽️ **Planes de dieta** con seguimiento nutricional
 - 📈 **Seguimiento de progreso** con gráficos y estadísticas
+- 🔔 **Sistema de notificaciones** para seguimiento y vencimientos
+- 🏥 **Gestión de lesiones** y patologías por alumno
 - 📧 **Recordatorios automáticos** de pago por email
-- 📊 **Exportación** de rutinas en PDF y Excel
+- 📊 **Exportación** de rutinas y dietas en PDF y Excel
 - 🔒 **Autenticación segura** con JWT
 - 📱 **Diseño responsive** para móviles y desktop
 
@@ -86,6 +88,13 @@ FROM_EMAIL=noreply@tudominio.com
 alembic upgrade head
 ```
 
+**Nota:** Si ya tienes la base de datos creada, necesitarás crear una nueva migración para las nuevas tablas:
+```bash
+# Generar migración para notificaciones y lesiones
+alembic revision --autogenerate -m "add notifications and lesiones tables"
+alembic upgrade head
+```
+
 6. **Poblar datos iniciales (opcional):**
 ```bash
 python seed_ejercicios.py
@@ -130,17 +139,33 @@ La aplicación estará disponible en `http://localhost:3000`
 - Dashboard individual por alumno
 - Registro de pesos con histórico
 - Gráficos de progreso
+- Gestión de lesiones y patologías
 
 ### Gestión de Rutinas
 - Crear rutinas personalizadas
 - Agregar ejercicios a rutinas
 - Exportar rutinas en PDF y Excel
+- Sistema de activación/desactivación
 - CRUD completo
+
+### Gestión de Dietas
+- Crear dietas personalizadas
+- Agregar comidas y alimentos
+- Exportar dietas en PDF y Excel
+- Cálculo automático de macros
+- CRUD completo
+
+### Sistema de Notificaciones
+- Notificaciones de rutinas vencidas
+- Notificaciones de dietas vencidas
+- Recordatorios de meets de seguimiento
+- Campanita con contador en tiempo real
+- Marcar como leída/eliminar
 
 ### Dashboard
 - Estadísticas generales
 - Últimos alumnos añadidos
-- Resumen de rutinas activas
+- Resumen de rutinas y dietas activas
 
 ## API Endpoints
 
@@ -171,6 +196,23 @@ La aplicación estará disponible en `http://localhost:3000`
 ### Dashboard
 - `GET /dashboard` - Dashboard del coach
 
+### Notificaciones
+- `GET /notifications` - Listar notificaciones
+- `PATCH /notifications/{id}/read` - Marcar como leída
+- `DELETE /notifications/{id}` - Eliminar notificación
+- `GET /notifications/unread-count` - Contador de no leídas
+- `POST /notifications/generate-test` - Generar notificaciones de prueba
+
+### Lesiones
+- `GET /lesiones/alumno/{id}` - Lesiones del alumno
+- `POST /lesiones/alumno/{id}` - Crear lesión
+- `PATCH /lesiones/{id}` - Actualizar lesión
+- `DELETE /lesiones/{id}` - Eliminar lesión
+
+### Emails
+- `POST /emails/quota-increase` - Enviar incremento de cuota
+- `POST /emails/absence-notice` - Enviar aviso de ausencia
+
 ## 🧪 Testing
 
 ### Backend Tests
@@ -184,6 +226,12 @@ pytest -v
 cd frontend
 npm test
 ```
+
+### Probar Notificaciones
+1. Ve a `/notifications` en la aplicación
+2. Haz clic en "Generar Test" para crear notificaciones de prueba
+3. Observa la campanita en el header con el contador
+4. Marca como leídas o elimina las notificaciones
 
 ## 📝 Configuración de Producción
 

@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import Layout from '../components/Layout';
 import PRChart from '../components/PRChart';
 import SuccessModal from '../components/SuccessModal';
+import LesionesSection from '../components/LesionesSection';
 
 const AlumnoDetail = () => {
   const { id } = useParams();
@@ -640,11 +641,11 @@ const AlumnoDetail = () => {
           </div>
         </div>
 
+        <div className="bg-white p-6 rounded-lg shadow">
+          <LesionesSection alumnoId={id} />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <PRChart alumnoId={id} />
-          </div>
-          
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Personal Records</h2>
@@ -656,88 +657,91 @@ const AlumnoDetail = () => {
               </button>
             </div>
 
-          {showPRForm && (
-            <form onSubmit={handleAddPR} className="mb-4 p-4 bg-orange-50 rounded space-y-3">
-              <select
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                value={prForm.ejercicio}
-                onChange={(e) => setPrForm({ ...prForm, ejercicio: e.target.value })}
-                required
-              >
-                <option value="">Seleccionar ejercicio...</option>
-                <option value="sentadilla">Sentadilla</option>
-                <option value="press_militar">Press Militar</option>
-                <option value="press_plano">Press Plano</option>
-                <option value="peso_muerto">Peso Muerto</option>
-              </select>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="number"
-                  step="0.5"
-                  placeholder="Peso (kg)"
-                  className="border border-gray-300 rounded px-3 py-2"
-                  value={prForm.peso}
-                  onChange={(e) => setPrForm({ ...prForm, peso: e.target.value })}
+            {showPRForm && (
+              <form onSubmit={handleAddPR} className="mb-4 p-4 bg-orange-50 rounded space-y-3">
+                <select
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  value={prForm.ejercicio}
+                  onChange={(e) => setPrForm({ ...prForm, ejercicio: e.target.value })}
                   required
-                />
-                <input
-                  type="number"
-                  placeholder="Repeticiones"
-                  className="border border-gray-300 rounded px-3 py-2"
-                  value={prForm.repeticiones}
-                  onChange={(e) => setPrForm({ ...prForm, repeticiones: e.target.value })}
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded"
-              >
-                Agregar PR
-              </button>
-            </form>
-          )}
-
-          <div className="space-y-3">
-            {dashboardData?.personal_records?.length > 0 ? (
-              <>
-                {(showAllPRs ? dashboardData.personal_records : dashboardData.personal_records.slice(0, 4)).map((pr) => (
-                  <div key={pr.id} className="p-3 border border-gray-200 rounded flex justify-between items-center">
-                    <div>
-                      <h4 className="font-medium capitalize">
-                        {pr.ejercicio.replace('_', ' ')}
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {pr.peso}kg × {pr.repeticiones} rep{pr.repeticiones > 1 ? 's' : ''}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(pr.fecha).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => deletePR(pr.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                ))}
-                {dashboardData.personal_records.length > 4 && (
-                  <button
-                    onClick={() => setShowAllPRs(!showAllPRs)}
-                    className="w-full text-center text-blue-600 hover:text-blue-800 text-sm py-2"
-                  >
-                    {showAllPRs ? 'Ver menos' : `Ver más (${dashboardData.personal_records.length - 4} más)`}
-                  </button>
-                )}
-              </>
-            ) : (
-              <p className="text-gray-500 text-center py-8">No hay personal records registrados</p>
+                >
+                  <option value="">Seleccionar ejercicio...</option>
+                  <option value="sentadilla">Sentadilla</option>
+                  <option value="press_militar">Press Militar</option>
+                  <option value="press_plano">Press Plano</option>
+                  <option value="peso_muerto">Peso Muerto</option>
+                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    step="0.5"
+                    placeholder="Peso (kg)"
+                    className="border border-gray-300 rounded px-3 py-2"
+                    value={prForm.peso}
+                    onChange={(e) => setPrForm({ ...prForm, peso: e.target.value })}
+                    required
+                  />
+                  <input
+                    type="number"
+                    placeholder="Repeticiones"
+                    className="border border-gray-300 rounded px-3 py-2"
+                    value={prForm.repeticiones}
+                    onChange={(e) => setPrForm({ ...prForm, repeticiones: e.target.value })}
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded"
+                >
+                  Agregar PR
+                </button>
+              </form>
             )}
+
+            <div className="space-y-3">
+              {dashboardData?.personal_records?.length > 0 ? (
+                <>
+                  {(showAllPRs ? dashboardData.personal_records : dashboardData.personal_records.slice(0, 4)).map((pr) => (
+                    <div key={pr.id} className="p-3 border border-gray-200 rounded flex justify-between items-center">
+                      <div>
+                        <h4 className="font-medium capitalize">
+                          {pr.ejercicio.replace('_', ' ')}
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          {pr.peso}kg × {pr.repeticiones} rep{pr.repeticiones > 1 ? 's' : ''}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(pr.fecha).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => deletePR(pr.id)}
+                        className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  ))}
+                  {dashboardData.personal_records.length > 4 && (
+                    <button
+                      onClick={() => setShowAllPRs(!showAllPRs)}
+                      className="w-full text-center text-blue-600 hover:text-blue-800 text-sm py-2"
+                    >
+                      {showAllPRs ? 'Ver menos' : `Ver más (${dashboardData.personal_records.length - 4} más)`}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p className="text-gray-500 text-center py-8">No hay personal records registrados</p>
+              )}
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <PRChart alumnoId={id} />
           </div>
         </div>
-        </div>
-       
 
         {/* Modal para copiar rutina */}
         {showCopyModal && (

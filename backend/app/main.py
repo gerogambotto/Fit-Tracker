@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from app.database import engine
 from app.models.models import Base
-from app.routes import auth, alumnos, rutinas, dashboard, ejercicios_base, dietas
+from app.routes import auth, alumnos, rutinas, dashboard, ejercicios_base, dietas, notifications, lesiones, emails
 
 # Crear tablas
 Base.metadata.create_all(bind=engine)
@@ -12,11 +12,12 @@ Base.metadata.create_all(bind=engine)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    from app.tasks.payment_reminders import check_payment_reminders
-    try:
-        check_payment_reminders()
-    except Exception as e:
-        print(f"Error ejecutando recordatorios: {e}")
+    # Comentado temporalmente para evitar errores de email
+    # from app.tasks.payment_reminders import check_payment_reminders
+    # try:
+    #     check_payment_reminders()
+    # except Exception as e:
+    #     print(f"Error ejecutando recordatorios: {e}")
     yield
     # Shutdown (if needed)
 
@@ -38,6 +39,9 @@ app.include_router(rutinas.router)
 app.include_router(dashboard.router)
 app.include_router(ejercicios_base.router)
 app.include_router(dietas.router)
+app.include_router(notifications.router)
+app.include_router(lesiones.router)
+app.include_router(emails.router)
 
 @app.get("/")
 def read_root():

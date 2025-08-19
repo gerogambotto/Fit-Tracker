@@ -490,6 +490,24 @@ ALTER TABLE ejercicios AUTO_INCREMENT = 300;
 ALTER TABLE dietas AUTO_INCREMENT = 12;
 ALTER TABLE comidas AUTO_INCREMENT = 85;
 ALTER TABLE comida_alimentos AUTO_INCREMENT = 500;
+
+-- Notificaciones de prueba
+INSERT INTO notifications (coach_id, alumno_id, tipo, titulo, mensaje, leida, creada_en) VALUES
+(1, 1, 'rutina_vencida', 'Rutina Vencida - Juan Pérez', 'La rutina de Juan Pérez ha vencido el 15/12/2024. Es necesario crear una nueva rutina.', false, '2024-12-16 09:00:00'),
+(1, 2, 'dieta_vencida', 'Dieta Vencida - María García', 'La dieta de María García venció el 14/12/2024. Se recomienda actualizar el plan nutricional.', false, '2024-12-16 09:15:00'),
+(1, 3, 'meet_seguimiento', 'Meet de Seguimiento - Pedro López', 'Es hora de programar una sesión de seguimiento con Pedro López. Última sesión: 01/12/2024.', false, '2024-12-16 10:00:00'),
+(1, NULL, 'rutina_vencida', 'Rutina Standalone Vencida', 'La rutina "Principiantes" ha vencido y necesita revisión.', true, '2024-12-15 14:30:00'),
+(1, 4, 'meet_seguimiento', 'Recordatorio Meet - Ana Martínez', 'Programar meet de seguimiento semanal con Ana Martínez.', false, '2024-12-16 11:00:00');
+
+-- Lesiones de ejemplo
+INSERT INTO lesiones (alumno_id, nombre, descripcion, es_cronica, fecha_inicio, fecha_fin, activa, creada_en) VALUES
+(1, 'Tendinitis rotuliana', 'Inflamación del tendón rotuliano en rodilla derecha', false, '2024-11-15 00:00:00', '2024-12-15 00:00:00', false, '2024-11-15 10:00:00'),
+(2, 'Lumbalgia crónica', 'Dolor crónico en zona lumbar L4-L5', true, '2024-01-01 00:00:00', NULL, true, '2024-01-01 10:00:00'),
+(3, 'Esguince tobillo', 'Esguince grado 1 en tobillo izquierdo', false, '2024-12-01 00:00:00', '2024-12-20 00:00:00', true, '2024-12-01 15:30:00'),
+(5, 'Epicondilitis', 'Codo de tenista en brazo dominante', false, '2024-10-01 00:00:00', '2024-11-30 00:00:00', false, '2024-10-01 09:00:00');
+
+ALTER TABLE notifications AUTO_INCREMENT = 6;
+ALTER TABLE lesiones AUTO_INCREMENT = 5;
 ALTER TABLE rutinas_plantilla AUTO_INCREMENT = 4;
 ALTER TABLE ejercicios_plantilla AUTO_INCREMENT = 20;
 ALTER TABLE dietas_plantilla AUTO_INCREMENT = 4;

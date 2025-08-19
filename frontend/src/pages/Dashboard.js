@@ -75,6 +75,7 @@ const Dashboard = () => {
               <Link to="/rutinas/create" className="block text-sm text-blue-600 hover:text-blue-800">+ Nueva Rutina</Link>
               <Link to="/dietas/create" className="block text-sm text-purple-600 hover:text-purple-800">+ Nueva Dieta</Link>
               <Link to="/alumnos" className="block text-sm text-green-600 hover:text-green-800">+ Nuevo Alumno</Link>
+              <Link to="/emails" className="block text-sm text-orange-600 hover:text-orange-800">📧 Enviar Emails</Link>
             </div>
           </div>
         </div>

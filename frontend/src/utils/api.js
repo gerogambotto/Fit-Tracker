@@ -135,4 +135,27 @@ export const alimentosAPI = {
   create: (data) => api.post('/dietas/alimentos', data),
 };
 
+// Notifications endpoints
+export const notificationsAPI = {
+  getAll: () => api.get('/notifications'),
+  markAsRead: (id) => api.patch(`/notifications/${id}/read`),
+  delete: (id) => api.delete(`/notifications/${id}`),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  generateTest: () => api.post('/notifications/generate-test'),
+};
+
+// Lesiones endpoints
+export const lesionesAPI = {
+  getByAlumno: (alumnoId) => api.get(`/lesiones/alumno/${alumnoId}`),
+  create: (alumnoId, data) => api.post(`/lesiones/alumno/${alumnoId}`, data),
+  update: (id, data) => api.patch(`/lesiones/${id}`, data),
+  delete: (id) => api.delete(`/lesiones/${id}`),
+};
+
+// Email endpoints
+export const emailAPI = {
+  sendQuotaIncrease: (data) => api.post('/emails/quota-increase', data),
+  sendAbsenceNotice: (data) => api.post('/emails/absence-notice', data),
+};
+
 export default api;

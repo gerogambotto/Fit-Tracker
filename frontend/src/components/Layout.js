@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import NotificationBell from './NotificationBell';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -20,6 +21,7 @@ const Layout = ({ children }) => {
           </Link>
           <div className="flex items-center space-x-4">
             <span>Hola, {user?.nombre}</span>
+            <NotificationBell />
             <button
               onClick={handleLogout}
               className="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded"

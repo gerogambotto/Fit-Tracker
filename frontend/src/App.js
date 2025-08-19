@@ -19,6 +19,8 @@ import AllRutinas from './pages/AllRutinas';
 import AllDietas from './pages/AllDietas';
 import CreateStandaloneRutina from './pages/CreateStandaloneRutina';
 import CreateStandaloneDieta from './pages/CreateStandaloneDieta';
+import Notifications from './pages/Notifications';
+import EmailManagement from './pages/EmailManagement';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -130,6 +132,16 @@ function App() {
             <Route path="/dietas/create" element={
               <ProtectedRoute>
                 <CreateStandaloneDieta />
+              </ProtectedRoute>
+            } />
+            <Route path="/notifications" element={
+              <ProtectedRoute>
+                <Notifications />
+              </ProtectedRoute>
+            } />
+            <Route path="/emails" element={
+              <ProtectedRoute>
+                <EmailManagement />
               </ProtectedRoute>
             } />
             <Route path="/" element={<Navigate to="/dashboard" />} />
